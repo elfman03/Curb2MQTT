@@ -89,6 +89,83 @@ void main() {
 
  printf("hi\n");
 }
+// based on 
+//     https://github.com/microsoft/Windows-classic-samples/blob/main/Samples/Websocket/cpp/Main.cpp
+//     https://learn.microsoft.com/en-us/windows/win32/api/websocket/nf-websocket-websocketcreateclienthandle
+//      GRR...  NO TRANSPORT PROVIDED... https://stackoverflow.com/questions/51183336/windows-vc-websocket-e-invalid-protocol-format
+
+
+void DumpHeaders(
+    _In_reads_(headerCount) WEB_SOCKET_HTTP_HEADER* headers,
+    _In_ ULONG headerCount)
+{
+    for (ULONG i = 0; i < headerCount; i++)
+    {
+        wprintf(L"%.*S: %.*S\n", headers[i].ulNameLength, headers[i].pcName, headers[i].ulValueLength, headers[i].pcValue);
+    }
+}
+
+void create_websocket() {
+  HRESULT hr = S_OK;
+  printf("a %d\n",hr);
+  WEB_SOCKET_HANDLE clientHandle = NULL;
+  ULONG clientAdditionalHeaderCount = 0;
+  WEB_SOCKET_HTTP_HEADER* clientAdditionalHeaders = NULL;
+  ULONG clientHeaderCount = 0;
+  WEB_SOCKET_HTTP_HEADER* clientHeaders = NULL;
+
+  // Create a client side websocket handle.
+  hr = WebSocketCreateClientHandle(NULL, 0, &clientHandle);
+  printf("b %d\n",hr);
+
+  // Start a client side of the handshake - 'additionalHeaders' will hold an array of websocket specific headers.
+  // Production applications must add these headers to the outgoing HTTP request.
+  hr = WebSocketBeginClientHandshake(
+      clientHandle,
+      NULL,
+      0,
+      NULL,
+      0,
+      NULL,
+      0,
+      &clientAdditionalHeaders,
+      &clientAdditionalHeaderCount);
+  printf("c %d\n",hr);
+
+  // Static "Host" header.
+  const static WEB_SOCKET_HTTP_HEADER host =
+  {
+      "Host",
+      ARRAYSIZE("Host") - 1, // Length of "Host" string without the NULL-terminator.
+      "app.energycurb.com",
+      ARRAYSIZE("app.energycurb.com") - 1 // Length of target host string without the NULL-terminator.
+  };
+  clientHeaderCount = clientAdditionalHeaderCount + 1;
+  clientHeaders = new WEB_SOCKET_HTTP_HEADER[clientHeaderCount];
+  CopyMemory(clientHeaders, clientAdditionalHeaders, clientAdditionalHeaderCount * sizeof(WEB_SOCKET_HTTP_HEADER));
+  clientHeaders[clientAdditionalHeaderCount] = host;
+  wprintf(L"-- Client side headers that need to be send with a request --\n");
+  DumpHeaders(clientHeaders, clientHeaderCount);
+
+  // Finish handshake. Once the client/server handshake is completed, memory allocated by
+  // the *Begin* functions is reclaimed and must not be used by the application.
+  hr = WebSocketEndClientHandshake(
+       clientHandle,
+       clientAdditionalHeaders,
+       clientAdditionalHeaderCount,
+       NULL,
+       0,
+       NULL);
+  printf("d %d\n",hr);
+
+ printf("hi\n");
+}
+
+void main() {
+  //get_curb_token();
+  create_websocket();
+}
+
 
 void read_config() {
   FILE *f;
