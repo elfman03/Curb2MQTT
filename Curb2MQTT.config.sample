@@ -1,0 +1,8 @@
+CURB_USERNAME=user@foo.org
+CURB_PASSWORD=myPassword
+#
+# To get the following see Curb Public API
+# https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
+#
+CURB_CLIENT_ID=client_id
+CURB_CLIENT_SECRET=client_secret
