@@ -17,6 +17,79 @@ char *CURB_CLIENT_SECRET;
 
 char *auth_buf=0, *auth_code=0;
 
+#include <condition_variable>
+#include <thread>
+#include <mutex>
+
+std::mutex _lock;
+std::condition_variable_any _cond;
+bool connect_finish=false;
+sio::socket::ptr current_socket;
+
+char *auth_buf=0, *auth_code=0;
+
+class connection_listener
+{
+    sio::client &handler;
+
+public:
+    
+    connection_listener(sio::client& h):
+    handler(h)
+    {
+    }
+    
+    void on_connected()
+    {
+        printf("connecting???\n");
+        _lock.lock();
+        _cond.notify_all();
+        connect_finish = true;
+        printf("sio connected\n");
+        _lock.unlock();
+    }
+    void on_close(sio::client::close_reason const& reason)
+    {
+        printf("sio closed\n");
+        exit(0);
+    }
+    
+    void on_fail()
+    {
+        printf("sio failed\n");
+        exit(0);
+    }
+};
+void main() {
+  sio::client h;
+  connection_listener l(h);
+  printf("a\n");
+  h.set_open_listener(std::bind(&connection_listener::on_connected, &l));
+  printf("b\n");
+  h.set_close_listener(std::bind(&connection_listener::on_close, &l,std::placeholders::_1));
+  printf("c\n");
+  h.set_fail_listener(std::bind(&connection_listener::on_fail, &l));
+  printf("d\n");
+  //h.connect("https://app.energycurb.com/api/circuit-data");
+  h.connect("wss://app.energycurb.com/socket.io/?EIO=3&transport=websocket");
+  printf("e\n");
+  _lock.lock();
+  printf("f\n");
+  if(!connect_finish)
+  {
+  printf("g\n");
+      _cond.wait(_lock);
+  printf("h\n");
+  }
+  printf("i\n");
+  _lock.unlock();
+  printf("j\n");
+  _lock.unlock();
+  current_socket = h.socket();
+
+ printf("hi\n");
+}
+
 void read_config() {
   FILE *f;
   int i, ch;
