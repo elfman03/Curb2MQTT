@@ -3,6 +3,25 @@
 #include <stdio.h>
 #include "Curb2MQTT.h"
 
+/*
+ * NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
+ * NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
+ * NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
+ *
+ * This code is sloppy and is based on a WinHttp sample.  
+ * It realy should be rewritten a bit more tersely.
+ *
+ */
+
+// Based on Windows Samples
+//
+// https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/WinhttpWebsocket/cpp
+// https://learn.microsoft.com/en-us/windows/win32/winhttp/winhttp-sessions-overview#using-the-winhttp-api-to-access-the-web
+//
+// based on Curb API 
+// https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
+
+
 void create_websocket() {
   DWORD dwSize = 0;
   DWORD dwDownloaded = 0;
