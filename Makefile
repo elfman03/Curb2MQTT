@@ -6,7 +6,7 @@ OBJS=Config.obj AuthToken.obj WebSocketInit.obj
 Curb2MQTT.exe: Curb2MQTT.cpp Curb2MQTT.h $(OBJS)
 	cl $(OPTS) Curb2MQTT.cpp /link $(OBJS) WinHttp.lib
 
-Config.obj: Config.cpp Curb2MQTT.h
+Config.obj: Config.h Config.cpp Curb2MQTT.h
 	cl $(OPTS) /c Config.cpp
 
 AuthToken.obj: AuthToken.cpp Curb2MQTT.h

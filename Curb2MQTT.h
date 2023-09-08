@@ -39,10 +39,10 @@ extern void create_websocket();
 
 // Stuff to load from config file
 //
-extern char *CURB_USERNAME;
-extern char *CURB_PASSWORD;
-extern char *CURB_CLIENT_ID;
-extern char *CURB_CLIENT_SECRET;
+extern const char *CURB_USERNAME;
+extern const char *CURB_PASSWORD;
+extern const char *CURB_CLIENT_ID;
+extern const char *CURB_CLIENT_SECRET;
 
 // Stuff to get from authentication server
 //
