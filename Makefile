@@ -7,3 +7,6 @@ Curb2MQTT.exe: Curb2MQTT.cpp
 
 clean:
 	cmd /c del /q Curb2MQTT.obj Curb2MQTT.exe
+
+test:
+	.\Curb2MQTT.exe

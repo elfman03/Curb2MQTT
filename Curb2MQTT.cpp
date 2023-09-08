@@ -2,6 +2,8 @@
 #include <winhttp.h>
 #include <stdio.h>
 
+//#define DEBUG_PRINT
+
 #define API_HOST L"app.energycurb.com"
 #define API_PATH L"/socket.io/?EIO=3&transport=websocket"
 #define AUTH_MAX 4096
@@ -49,28 +51,31 @@ void read_config() {
   *q=0;
   CURB_USERNAME=strdup(&p[14]);
   *q='\n';
-  printf("CURB_USERNAME=%s\n",CURB_USERNAME);
 
   p=strstr(buf,"CURB_PASSWORD=");
   for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
   *q=0;
   CURB_PASSWORD=strdup(&p[14]);
   *q='\n';
-  printf("CURB_PASSWORD=%s\n",CURB_PASSWORD);
 
   p=strstr(buf,"CURB_CLIENT_ID=");
   for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
   *q=0;
   CURB_CLIENT_ID=strdup(&p[15]);
   *q='\n';
-  printf("CURB_CLIENT_ID=%s\n",CURB_CLIENT_ID);
 
   p=strstr(buf,"CURB_CLIENT_SECRET=");
   for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
   *q=0;
   CURB_CLIENT_SECRET=strdup(&p[19]);
   *q='\n';
+
+#ifdef DEBUG_PRINT
+  printf("CURB_USERNAME=%s\n",CURB_USERNAME);
+  printf("CURB_PASSWORD=%s\n",CURB_PASSWORD);
+  printf("CURB_CLIENT_ID=%s\n",CURB_CLIENT_ID);
   printf("CURB_CLIENT_SECRET=%s\n",CURB_CLIENT_SECRET);
+#endif
 }
 
 // based on Visual Studio Example
@@ -157,7 +162,9 @@ void get_curb_token() {
                         WINHTTP_HEADER_NAME_BY_INDEX,
                         &dwStatusCode, &dwSize, 
                         WINHTTP_NO_HEADER_INDEX);
+#ifdef DEBUG_PRINT
     printf("get_curb_token recv status=%d\n",dwStatusCode);
+#endif
 
     do 
     {
@@ -174,7 +181,9 @@ void get_curb_token() {
       if( !WinHttpReadData( hRequest, (LPVOID)&auth_buf[index], dwSize, &dwDownloaded ) ) {
         printf( "Error %u in WinHttpReadData.\n", GetLastError( ) );
       } else {
+#ifdef DEBUG_PRINT
         printf( "%s", &auth_buf[index] );
+#endif
       }
       index=index+dwSize;
     } while( dwSize > 0 );
@@ -182,7 +191,9 @@ void get_curb_token() {
     p=&p[16];
     char *p2=strstr(p,"\"");
     p2[0]=0;
+#ifdef DEBUG_PRINT
     printf("\n---\n%s\n---\n",p);
+#endif
     auth_code=p;
   } else {
     printf( "WinHttpReceiveResponse Error %d has occurred.\n", GetLastError( ) );
@@ -330,6 +341,7 @@ void create_websocket() {
       printf("WinHttpWebSocketReceive failure %d\n",GetLastError());
       printf("DANGER WILL ROBINSON websocket recv failure\n");
     } else {
+      pbCurrentBufferPointer[dwBytesTransferred]=0;
       printf("got fragment size %d type=%d msg=%s\n",dwBytesTransferred,eBufferType,pbCurrentBufferPointer);
     }
   }
@@ -342,8 +354,11 @@ void create_websocket() {
 }
 
 void main() {
+  printf("Loading Config File\n");
   read_config();
+  printf("Retrieving Curb Access Token\n");
   get_curb_token();
-  //create_websocket();
+  printf("Creating WebSocket\n");
+  create_websocket();
 }
 
