@@ -1,20 +1,14 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <stdio.h>
-#include "Curb2MQTT.h"
+#include "global.h"
 #include "Config.h"
+#include "AuthToken.h"
+#include "WebSocket.h"
 
 Config *myConfig=new Config();
-
-// Stuff to load from config file
-//
-const char *CURB_USERNAME;
-const char *CURB_PASSWORD;
-const char *CURB_CLIENT_ID;
-const char *CURB_CLIENT_SECRET;
-
-char *AUTH_BUF=0;
-char *AUTH_CODE=0;
+AuthToken *myToken=new AuthToken();
+WebSocket *myWS=new WebSocket();
 
 // based on https://github.com/microsoft/Windows-classic-samples/blob/main/Samples/WinhttpWebsocket/cpp/WinhttpWebsocket.cpp
 // https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
@@ -22,13 +16,15 @@ char *AUTH_CODE=0;
 void main() {
   printf("Loading Config File\n");
   myConfig->readConfig("Curb2MQTT.config");
-  CURB_USERNAME=myConfig->getCurbUsername();
-  CURB_PASSWORD=myConfig->getCurbPassword();
-  CURB_CLIENT_ID=myConfig->getCurbClientId();
-  CURB_CLIENT_SECRET=myConfig->getCurbClientSecret();
+#ifdef DEBUG_PRINT
+  printf("CURB_USERNAME=%s\n",myConfig->getCurbUsername());
+  printf("CURB_PASSWORD=%s\n",myConfig->getCurbPassword());
+  printf("CURB_CLIENT_ID=%s\n",myConfig->getCurbClientId());
+  printf("CURB_CLIENT_SECRET=%s\n",myConfig->getCurbClientSecret());
+#endif
   printf("Retrieving Curb Access Token\n");
-  get_curb_token();
+  const char *c=myToken->getAuthToken(myConfig, false);
   printf("Creating WebSocket\n");
-  create_websocket();
+  myWS->createWebSocket(c);
 }
 

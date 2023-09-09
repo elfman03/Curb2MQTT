@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include "global.h"
 #include "Config.h"
 
 const char *Config::getCurbUsername()     { return curbUsername;     }
@@ -14,6 +15,9 @@ Config::Config() {
   curbClientSecret=0;
 }
 
+//
+// Read Curb2MQTT.config and populate settings
+//
 void Config::readConfig(const char *fname) {
   FILE *f;
   int i, ch;

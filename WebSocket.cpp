@@ -1,7 +1,18 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <stdio.h>
-#include "Curb2MQTT.h"
+#include "global.h"
+#include "WebSocket.h"
+
+/*
+ *
+ * API Constants from the Curb API
+ *
+ */
+#define API_HOST L"app.energycurb.com"
+#define API_PATH L"/socket.io/?EIO=3&transport=websocket"
+
+WebSocket::WebSocket() { }
 
 /*
  * NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
@@ -21,8 +32,10 @@
 // based on Curb API 
 // https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
 
-
-void create_websocket() {
+//
+// Connect curb and get a newly converted websocket
+//
+void WebSocket::createWebSocket(const char *token) {
   DWORD dwSize = 0;
   DWORD dwDownloaded = 0;
   BOOL  bResults = FALSE;
@@ -36,8 +49,8 @@ void create_websocket() {
              hConnect = NULL,
              hRequest = NULL,
              hWebsocket=NULL;
-  wchar_t *auth_head=new wchar_t[AUTH_MAX+100];
-  swprintf(auth_head,L"authorization: Bearer %hs\r\n",AUTH_CODE);
+  wchar_t *auth_head=new wchar_t[strlen(token)+100];
+  swprintf(auth_head,L"authorization: Bearer %hs\r\n",token);
   wprintf(L"auth_head=%s\n",auth_head);
 
   // Use WinHttpOpen to obtain a session handle.

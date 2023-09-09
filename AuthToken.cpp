@@ -1,7 +1,18 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <stdio.h>
-#include "Curb2MQTT.h"
+#include "global.h"
+#include "Config.h"
+#include "AuthToken.h"
+
+#define AUTH_MAX 4096
+#define AUTH_HOST L"energycurb.auth0.com"
+#define AUTH_PATH  L"/oauth/token"
+
+AuthToken::AuthToken() { 
+  authBuf=0;
+  authCode=0;
+}
 
 /*
  * NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
@@ -18,7 +29,11 @@
 // based on Curb API 
 // https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
 
-void get_curb_token() {
+//
+// Connect to curb authentication server and get an authentication Token
+// See https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
+//
+const char *AuthToken::getAuthToken(Config *config, bool forceNew) {
   DWORD dwSize = 0;
   DWORD dwDownloaded = 0;
   BOOL  bResults = FALSE;
@@ -26,19 +41,29 @@ void get_curb_token() {
              hConnect = NULL,
              hRequest = NULL;
 
+  // If already have an authcode and we dont want to force a new one then just return the current one.
+  //
+  if(!forceNew && authCode) { 
+     printf("Returning existing AuthCode\n");
+     return authCode; 
+  }
+
   char post_data[1024];
-  sprintf(post_data,"{\"grant_type\": \"password\", \"audience\": \"app.energycurb.com/api\", \"username\": \"%s\", \"password\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"redirect_uri\": \"http://localhost:8000\"}", CURB_USERNAME, CURB_PASSWORD, CURB_CLIENT_ID, CURB_CLIENT_SECRET);
+  sprintf(post_data,"{\"grant_type\": \"password\", \"audience\": \"app.energycurb.com/api\", \"username\": \"%s\", \"password\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"redirect_uri\": \"http://localhost:8000\"}", config->getCurbUsername(), config->getCurbPassword(), config->getCurbClientId(), config->getCurbClientSecret());
   DWORD post_len=strlen(post_data);
   wchar_t *post_head=L"Content-Type: application/json\r\n";
+#ifdef DEBUG_PRINT
+  printf("Post payload is %s\n",post_data);
+#endif
 
-  if(AUTH_BUF) {
-    delete [] AUTH_BUF;
-    AUTH_BUF=0;
-    AUTH_CODE=0;
+  if(authBuf) {
+    delete [] authBuf;
+    authBuf=0;
+    authCode=0;
   }
-  AUTH_BUF=new char[AUTH_MAX]; 
-  AUTH_CODE=0;
-  ZeroMemory( AUTH_BUF, AUTH_MAX );
+  authBuf=new char[AUTH_MAX]; 
+  authCode=0;
+  ZeroMemory( authBuf, AUTH_MAX );
 
   // Use WinHttpOpen to obtain a session handle.
   hSession = WinHttpOpen( L"Curb2Mqtt/1.0",  
@@ -52,7 +77,7 @@ void get_curb_token() {
     hConnect = WinHttpConnect( hSession, AUTH_HOST, INTERNET_DEFAULT_HTTPS_PORT, 0 );
   } else {
     printf( "WinHttpOpen Error %d has occurred.\n", GetLastError( ) );
-    return;
+    return 0;
   }
 
   // Create an HTTP request handle.
@@ -65,7 +90,7 @@ void get_curb_token() {
   } else {
     printf( "WinHttpConnect Error %d has occurred.\n", GetLastError( ) );
     WinHttpCloseHandle( hSession );
-    return;
+    return 0;
   }
 
   // Send a request.
@@ -75,7 +100,7 @@ void get_curb_token() {
     printf( "WinHttpOpenRequest Error %d has occurred.\n", GetLastError( ) );
     WinHttpCloseHandle( hSession );
     WinHttpCloseHandle( hConnect );
-    return;
+    return 0;
   }
 
   // End the request.
@@ -86,7 +111,7 @@ void get_curb_token() {
     WinHttpCloseHandle( hRequest );
     WinHttpCloseHandle( hSession );
     WinHttpCloseHandle( hConnect );
-    return;
+    return 0;
   }
 
   // Keep checking for data until there is nothing left.
@@ -115,29 +140,29 @@ void get_curb_token() {
         printf("CURB AUTH failed\n");
         exit(0);
       }
-      if( !WinHttpReadData( hRequest, (LPVOID)&AUTH_BUF[index], dwSize, &dwDownloaded ) ) {
+      if( !WinHttpReadData( hRequest, (LPVOID)&authBuf[index], dwSize, &dwDownloaded ) ) {
         printf( "Error %u in WinHttpReadData.\n", GetLastError( ) );
       } else {
 #ifdef DEBUG_PRINT
-        printf( "%s", &AUTH_BUF[index] );
+        printf( "%s", &authBuf[index] );
 #endif
       }
       index=index+dwSize;
     } while( dwSize > 0 );
-    char *p=strstr(AUTH_BUF,"\"access_token\":\"");
+    char *p=strstr(authBuf,"\"access_token\":\"");
     p=&p[16];
     char *p2=strstr(p,"\"");
     p2[0]=0;
 #ifdef DEBUG_PRINT
     printf("\n---\n%s\n---\n",p);
 #endif
-    AUTH_CODE=p;
+    authBuf=p;
   } else {
     printf( "WinHttpReceiveResponse Error %d has occurred.\n", GetLastError( ) );
     WinHttpCloseHandle( hRequest );
     WinHttpCloseHandle( hSession );
     WinHttpCloseHandle( hConnect );
-    return;
+    return 0;
   }
 
   // Report any errors.
@@ -149,5 +174,6 @@ void get_curb_token() {
   if( hRequest ) WinHttpCloseHandle( hRequest );
   if( hConnect ) WinHttpCloseHandle( hConnect );
   if( hSession ) WinHttpCloseHandle( hSession );
+  return authCode;
 }
 
