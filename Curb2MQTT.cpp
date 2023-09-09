@@ -24,6 +24,9 @@ void main() {
 #endif
   printf("Retrieving Curb Access Token\n");
   const char *c=myToken->getAuthToken(myConfig, false);
+#ifdef DEBUG_PRINT
+  printf("Token=%s\n",c);
+#endif
   printf("Creating WebSocket\n");
   myWS->createWebSocket(c);
 }

@@ -153,6 +153,7 @@ const char *AuthToken::getAuthToken(Config *config, bool forceNew) {
     p=&p[16];
     char *p2=strstr(p,"\"");
     p2[0]=0;
+    authCode=p;
 #ifdef DEBUG_PRINT
     printf("\n---\n%s\n---\n",p);
 #endif

@@ -89,7 +89,6 @@ void WebSocket::createWebSocket(const char *token) {
     WinHttpCloseHandle(hSession);
     return;
   }
-
   // Send a request.
   if( bResults ) {
     bResults = WinHttpSendRequest( hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, NULL, 0, 0, 0 );
