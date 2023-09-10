@@ -28,6 +28,6 @@ void main() {
   printf("Token=%s\n",c);
 #endif
   printf("Creating WebSocket\n");
-  myWS->createWebSocket(c);
+  myWS->createWebSocket();
 }
 
