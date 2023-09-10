@@ -14,6 +14,23 @@ AuthToken::AuthToken() {
   authCode=0;
 }
 
+const char *AuthToken::getAuthToken(Config *config, bool forceNew) {
+  // If already have an authcode and we dont want to force a new one then just return the current one.
+  //
+  if(!forceNew && authCode) { 
+#ifdef DEBUG_PRINT
+     printf("Returning existing AuthCode\n");
+#endif
+  } else {
+    //
+    // Otherwise lets get a fresh token
+    //
+    fetchNewToken(config);
+  }
+  return authCode;
+}
+
+
 /*
  * NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
  * NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
@@ -33,20 +50,13 @@ AuthToken::AuthToken() {
 // Connect to curb authentication server and get an authentication Token
 // See https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
 //
-const char *AuthToken::getAuthToken(Config *config, bool forceNew) {
+const char *AuthToken::fetchNewToken(Config *config) {
   DWORD dwSize = 0;
   DWORD dwDownloaded = 0;
   BOOL  bResults = FALSE;
   HINTERNET  hSession = NULL, 
              hConnect = NULL,
              hRequest = NULL;
-
-  // If already have an authcode and we dont want to force a new one then just return the current one.
-  //
-  if(!forceNew && authCode) { 
-     printf("Returning existing AuthCode\n");
-     return authCode; 
-  }
 
   char post_data[1024];
   sprintf(post_data,"{\"grant_type\": \"password\", \"audience\": \"app.energycurb.com/api\", \"username\": \"%s\", \"password\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"redirect_uri\": \"http://localhost:8000\"}", config->getCurbUsername(), config->getCurbPassword(), config->getCurbClientId(), config->getCurbClientSecret());
