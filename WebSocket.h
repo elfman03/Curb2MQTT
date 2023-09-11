@@ -16,7 +16,9 @@ private:
   
 public:
   WebSocket();
-  void createWebSocket();
+  int createWebSocket();
+  int registerForLive(const char *token);
+  void looper();
 };
 
 #endif

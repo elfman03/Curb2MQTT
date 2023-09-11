@@ -16,18 +16,11 @@ WebSocket *myWS=new WebSocket();
 void main() {
   printf("Loading Config File\n");
   myConfig->readConfig("Curb2MQTT.config");
-#ifdef DEBUG_PRINT
-  printf("CURB_USERNAME=%s\n",myConfig->getCurbUsername());
-  printf("CURB_PASSWORD=%s\n",myConfig->getCurbPassword());
-  printf("CURB_CLIENT_ID=%s\n",myConfig->getCurbClientId());
-  printf("CURB_CLIENT_SECRET=%s\n",myConfig->getCurbClientSecret());
-#endif
   printf("Retrieving Curb Access Token\n");
   const char *c=myToken->getAuthToken(myConfig, false);
-#ifdef DEBUG_PRINT
-  printf("Token=%s\n",c);
-#endif
   printf("Creating WebSocket\n");
   myWS->createWebSocket();
+  myWS->registerForLive(c);
+  myWS->looper();
 }
 

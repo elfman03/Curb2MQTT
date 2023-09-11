@@ -51,16 +51,8 @@ void WebSocket::ensureClosed() {
 //
 // Connect curb and get a newly converted websocket
 //
-void WebSocket::createWebSocket() {
-  DWORD dwSize = 0;
-  DWORD dwDownloaded = 0;
+int WebSocket::createWebSocket() {
   BOOL  bResults = FALSE;
-  BYTE rgbBuffer[1024];
-  BYTE *pbCurrentBufferPointer = rgbBuffer;
-  DWORD dwBufferLength = ARRAYSIZE(rgbBuffer);
-  DWORD dwBytesTransferred = 0;
-  DWORD dwCloseReasonLength = 0;
-  WINHTTP_WEB_SOCKET_BUFFER_TYPE eBufferType;
   HINTERNET  hRequest = NULL;
 
 //  wchar_t *auth_head=new wchar_t[strlen(token)+100];
@@ -151,67 +143,116 @@ void WebSocket::createWebSocket() {
     if(hRequest) { WinHttpCloseHandle(hRequest); hRequest=0; }
     if(hConnect) { WinHttpCloseHandle(hConnect); hConnect=0; }
     if(hSession) { WinHttpCloseHandle(hSession); hSession=0; }
+    return -1;  // not success
   }
-  ensureClosed();
+  return 0;     // success
+  //ensureClosed();
 }
 
-/*
+//
+//https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
+//
+int WebSocket::registerForLive(const char *token) {
+  DWORD ret;
+  char outbuf[1024];
 
-  if( bResults ) {
-    // https://stackoverflow.com/questions/23906654/how-to-get-http-status-code-from-winhttp-request
-    DWORD dwStatusCode=0,
-          dwSize=sizeof(dwStatusCode);
-    WinHttpQueryHeaders(hRequest,
-                        WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,
-                        WINHTTP_HEADER_NAME_BY_INDEX,
-                        &dwStatusCode, &dwSize, 
-                        WINHTTP_NO_HEADER_INDEX);
-    printf("initialize websocket recv status=%d\n",dwStatusCode);
-  } else {
-    printf("WinHttpReceiveResponse failure %d\n",GetLastError());
-    WinHttpCloseHandle(hRequest);
-    WinHttpCloseHandle(hConnect);
-    WinHttpCloseHandle(hSession);
-    return;
+  if(!hWebsocket) {
+    printf("ERROR: WebSocket is not open.  cannot use it to register for live data\n");
+    return -1;
+  }
+  if(!token) {
+    printf("ERROR: token is null.  cannot use it to register for live data\n");
+    return -1;
+  }
+  if(strlen(token)>950) {
+    printf("ERROR: token is over 800 bytes.  that seems unnecessary...  code check suggested.\n");
+    return -1;
   }
 
-  if(hWebsocket) {
-    WinHttpCloseHandle(hRequest);
-    hRequest= NULL;
-    printf("Succesfully upgraded to websocket protocol\n");
+  //
+  // Initial registration
+  //
+  sprintf(outbuf,"40/api/circuit-data");
+  ret=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,outbuf,strlen(outbuf));
+  if(ret!=NO_ERROR) {
+    printf("WinHttpWebSocketSend failure %d\n",GetLastError());
+    return -1;
   } else {
-    printf("WinHttpWebSocketCompleteUpgrade failure %d\n",GetLastError());
-    WinHttpCloseHandle(hRequest);
-    WinHttpCloseHandle(hConnect);
-    WinHttpCloseHandle(hSession);
-    return;
-  }
-
-  char *msg="40/api/circuit-data";
-  bResults=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,msg,strlen(msg)+1);
-  printf("bResults=%d\n",bResults);
-
-  eBufferType=WINHTTP_WEB_SOCKET_BINARY_FRAGMENT_BUFFER_TYPE;
-  while(eBufferType==WINHTTP_WEB_SOCKET_BINARY_FRAGMENT_BUFFER_TYPE) {
-    bResults = WinHttpWebSocketReceive(hWebsocket,
-                                       pbCurrentBufferPointer,
-                                       dwBufferLength,
-                                       &dwBytesTransferred,
-                                       &eBufferType);
-    if(bResults) { 
-      printf("WinHttpWebSocketReceive failure %d\n",GetLastError());
-      printf("DANGER WILL ROBINSON websocket recv failure\n");
-    } else {
-      pbCurrentBufferPointer[dwBytesTransferred]=0;
-      printf("got fragment size %d type=%d msg=%s\n",dwBytesTransferred,eBufferType,pbCurrentBufferPointer);
+    //
+    // Initiate Authentication
+    //
+    Sleep(1000);
+    sprintf(outbuf,"42/api/circuit-data,[\"authenticate\",{\"token\":\"%s\"}]",token);
+    printf("SENDING: %s\n\n---\n",outbuf);
+    ret=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,outbuf,strlen(outbuf));
+    if(ret!=NO_ERROR) {
+      printf("WinHttpWebSocketSend failure %d\n",GetLastError());
+      return -1;
     }
   }
-  printf("GOT FULL MESSAGE");
-
-  // Close any open handles.
-  if( hRequest ) WinHttpCloseHandle( hRequest );
-  if( hConnect ) WinHttpCloseHandle( hConnect );
-  if( hSession ) WinHttpCloseHandle( hSession );
+  return 0;
 }
-*/
+
+void handleUTF8(const char *payload) {
+  if(!strcmp(payload,"42/api/circuit-data,[\"authorized\"]")) {
+    printf("Authorized!... sending zone registration\n");
+  } else {
+    printf("UNKNOWN PAYLOAD: %s\n",payload);
+  }
+}
+
+void WebSocket::looper() {
+  DWORD ret;
+  char buf[8192];
+  char *bufp=buf;
+  DWORD remaining=8192;
+  DWORD incoming;
+  WINHTTP_WEB_SOCKET_BUFFER_TYPE bType;
+  
+//  DWORD dwSize = 0;
+//  DWORD dwDownloaded = 0;
+//  BYTE rgbBuffer[1024];
+//  BYTE *pbCurrentBufferPointer = rgbBuffer;
+//  DWORD dwBufferLength = ARRAYSIZE(rgbBuffer);
+//  DWORD dwBytesTransferred = 0;
+//  DWORD dwCloseReasonLength = 0;
+
+  
+  if(!hWebsocket) {
+    printf("ERROR: WebSocket is not open.  cannot use it to loop\n");
+    return;
+  }
+ 
+  for(;;) { 
+    ret = WinHttpWebSocketReceive(hWebsocket, bufp, remaining, &incoming, &bType);
+    buf[incoming]=0;
+    if(ret!=NO_ERROR) {
+      printf("WinHttpWebSocketReceive failure %d\n",GetLastError());
+    } else {
+      if(bType==WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE) {
+#ifdef DEBUG_PRINT
+        printf("WEBSOCKET: Received UTF8 Message -- %d bytes\n",incoming);
+#endif
+        handleUTF8(buf);
+      } else if(bType==WINHTTP_WEB_SOCKET_UTF8_FRAGMENT_BUFFER_TYPE) {
+#ifdef DEBUG_PRINT
+        printf("WEBSOCKET: Received UTF8 Fragment -- %d bytes\n",incoming);
+#endif
+      } else if(bType==WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE) {
+#ifdef DEBUG_PRINT
+        printf("WEBSOCKET: Received Binary Message -- %d bytes\n",incoming);
+#endif
+      } else if(bType==WINHTTP_WEB_SOCKET_BINARY_FRAGMENT_BUFFER_TYPE) {
+#ifdef DEBUG_PRINT
+        printf("WEBSOCKET: Received Binary Fragment -- %d bytest\n",incoming);
+#endif
+      } else if(bType==WINHTTP_WEB_SOCKET_CLOSE_BUFFER_TYPE) {
+#ifdef DEBUG_PRINT
+        printf("WEBSOCKET: Received %d (Close=4) Buffer -- %d bytes\n",bType, incoming);
+#endif
+      }
+    }
+  }
+  return;
+}
 
