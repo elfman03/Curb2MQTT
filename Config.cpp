@@ -83,7 +83,7 @@ void Config::readConfig(const char *fname) {
   curbUID=strdup(&p[9]);
   *q='\n';
 
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_CONFIG
   printf("CURB_USERNAME=%s\n",curbUsername);
   printf("CURB_PASSWORD=%s\n",curbPassword);
   printf("CURB_CLIENT_ID=%s\n",curbClientId);

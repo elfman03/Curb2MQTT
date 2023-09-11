@@ -15,10 +15,10 @@ WebSocket::WebSocket() { }
 // https://learn.microsoft.com/en-us/windows/win32/winhttp/winhttp-sessions-overview#using-the-winhttp-api-to-access-the-web
 // see https://github.com/microsoft/Windows-classic-samples/blob/main/Samples/WinhttpWebsocket/cpp/WinhttpWebsocket.cpp
 //
-void WebSocket::ensureClosed() {
+int WebSocket::ensureClosed() {
   DWORD ret;
   BYTE closeReason[123];
-  USHORT closeStatus;
+  USHORT closeStatus=0;
   DWORD crl; // close reason length returned by server
 
   if(hWebsocket) {
@@ -30,7 +30,7 @@ void WebSocket::ensureClosed() {
       if(ret!=ERROR_SUCCESS) {
         printf("WinHttpQueryCloseStatus failure %d\n",GetLastError());
       } else {
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
         wprintf(L"The server closed the connection with status code: '%d' and reason: '%.*S'\n", (int)closeStatus, crl, closeReason);
 #endif
       }
@@ -40,6 +40,7 @@ void WebSocket::ensureClosed() {
   }
   if(hConnect) { WinHttpCloseHandle(hConnect); hConnect=0; }
   if(hSession) { WinHttpCloseHandle(hSession); hSession=0; }
+  return closeStatus?closeStatus:-1;
 }
 
 //
@@ -112,7 +113,7 @@ int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path) {
                 } else {
                   WinHttpCloseHandle(hRequest);
                   hRequest=0;
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
                   printf("Successfully upgraded to Client WebSocket!\n");
 #endif
                 }
@@ -141,7 +142,7 @@ void WebSocket::postUTF8(const char *outbuf) {
     printf("ERROR: WebSocket is not open.  cannot use it to post\n");
     return;
   }
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
   printf("SENDING: %s\n",outbuf);
 #endif
   ret=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,(PVOID)outbuf,strlen(outbuf));
@@ -152,7 +153,7 @@ void WebSocket::postUTF8(const char *outbuf) {
   return;
 }
 
-void WebSocket::looper(void(*UTFhandler)(const char *)) {
+int WebSocket::looper(void(*UTFhandler)(const char *)) {
   DWORD ret;
   char buf[8192];
   char *bufp=buf;
@@ -162,7 +163,7 @@ void WebSocket::looper(void(*UTFhandler)(const char *)) {
   
   if(!hWebsocket) {
     printf("ERROR: WebSocket is not open.  cannot use it to loop\n");
-    return;
+    return -1;
   }
  
   for(;;) { 
@@ -170,33 +171,33 @@ void WebSocket::looper(void(*UTFhandler)(const char *)) {
     buf[incoming]=0;
     if(ret!=NO_ERROR) {
       printf("WinHttpWebSocketReceive failure %d\n",GetLastError());
+      return -1;
     } else {
       if(bType==WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE) {
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
         //printf("WEBSOCKET: Received UTF8 Message -- %d bytes\n",incoming);
 #endif
         UTFhandler(buf);
       } else if(bType==WINHTTP_WEB_SOCKET_UTF8_FRAGMENT_BUFFER_TYPE) {
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
         printf("WEBSOCKET: Received UTF8 Fragment -- %d bytes\n",incoming);
 #endif
       } else if(bType==WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE) {
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
         printf("WEBSOCKET: Received Binary Message -- %d bytes\n",incoming);
 #endif
       } else if(bType==WINHTTP_WEB_SOCKET_BINARY_FRAGMENT_BUFFER_TYPE) {
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
         printf("WEBSOCKET: Received Binary Fragment -- %d bytest\n",incoming);
 #endif
       } else if(bType==WINHTTP_WEB_SOCKET_CLOSE_BUFFER_TYPE) {
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_WEBSOCKET
         printf("WEBSOCKET: Received %d (Close=4) Buffer -- %d bytes\n",bType, incoming);
 #endif
-        ensureClosed();
-        return;
+        return ensureClosed();
       }
     }
   }
-  return;
+  return -1; // not reached
 }
 

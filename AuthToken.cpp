@@ -18,7 +18,7 @@ const char *AuthToken::getAuthToken(Config *config, bool forceNew) {
   // If already have an authcode and we dont want to force a new one then just return the current one.
   //
   if(!forceNew && authCode) { 
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_AUTH
      printf("Returning existing AuthCode\n");
 #endif
   } else {
@@ -62,16 +62,16 @@ const char *AuthToken::fetchNewToken(Config *config) {
   sprintf(post_data,"{\"grant_type\": \"password\", \"audience\": \"app.energycurb.com/api\", \"username\": \"%s\", \"password\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"redirect_uri\": \"http://localhost:8000\"}", config->getCurbUsername(), config->getCurbPassword(), config->getCurbClientId(), config->getCurbClientSecret());
   DWORD post_len=strlen(post_data);
   wchar_t *post_head=L"Content-Type: application/json\r\n";
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_AUTH
   printf("Post payload is %s\n",post_data);
 #endif
 
   if(authBuf) {
-    delete [] authBuf;
+    free(authBuf);
     authBuf=0;
     authCode=0;
   }
-  authBuf=new char[AUTH_MAX]; 
+  authBuf=(char*)malloc(AUTH_MAX); 
   authCode=0;
   ZeroMemory( authBuf, AUTH_MAX );
 
@@ -134,7 +134,7 @@ const char *AuthToken::fetchNewToken(Config *config) {
                         WINHTTP_HEADER_NAME_BY_INDEX,
                         &dwStatusCode, &dwSize, 
                         WINHTTP_NO_HEADER_INDEX);
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_AUTH
     printf("get_curb_token recv status=%d\n",dwStatusCode);
 #endif
 
@@ -153,7 +153,7 @@ const char *AuthToken::fetchNewToken(Config *config) {
       if( !WinHttpReadData( hRequest, (LPVOID)&authBuf[index], dwSize, &dwDownloaded ) ) {
         printf( "Error %u in WinHttpReadData.\n", GetLastError( ) );
       } else {
-#ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT_AUTH
         printf( "%s", &authBuf[index] );
 #endif
       }
@@ -164,10 +164,9 @@ const char *AuthToken::fetchNewToken(Config *config) {
     char *p2=strstr(p,"\"");
     p2[0]=0;
     authCode=p;
-#ifdef DEBUG_PRINT
-    printf("\n---\n%s\n---\n",p);
+#ifdef DEBUG_PRINT_AUTH
+    printf("\n---\n%s\n---\n",authCode);
 #endif
-    authBuf=p;
   } else {
     printf( "WinHttpReceiveResponse Error %d has occurred.\n", GetLastError( ) );
     WinHttpCloseHandle( hRequest );
