@@ -4,6 +4,9 @@
 #include "global.h"
 #include "WebSocket.h"
 
+//socket.io useful reference:
+//https://socket.io/docs/v4/socket-io-protocol/#format
+
 /*
  *
  * API Constants from the Curb API
@@ -149,74 +152,30 @@ int WebSocket::createWebSocket() {
   //ensureClosed();
 }
 
-//
-//https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
-//
-int WebSocket::registerForLive(const char *token) {
+void WebSocket::postUTF8(const char *outbuf) {
   DWORD ret;
-  char outbuf[1024];
-
   if(!hWebsocket) {
-    printf("ERROR: WebSocket is not open.  cannot use it to register for live data\n");
-    return -1;
+    printf("ERROR: WebSocket is not open.  cannot use it to post\n");
+    return;
   }
-  if(!token) {
-    printf("ERROR: token is null.  cannot use it to register for live data\n");
-    return -1;
-  }
-  if(strlen(token)>950) {
-    printf("ERROR: token is over 800 bytes.  that seems unnecessary...  code check suggested.\n");
-    return -1;
-  }
-
-  //
-  // Initial registration
-  //
-  sprintf(outbuf,"40/api/circuit-data");
-  ret=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,outbuf,strlen(outbuf));
+#ifdef DEBUG_PRINT
+  printf("SENDING: %s\n",outbuf);
+#endif
+  ret=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,(PVOID)outbuf,strlen(outbuf));
   if(ret!=NO_ERROR) {
     printf("WinHttpWebSocketSend failure %d\n",GetLastError());
-    return -1;
-  } else {
-    //
-    // Initiate Authentication
-    //
-    Sleep(1000);
-    sprintf(outbuf,"42/api/circuit-data,[\"authenticate\",{\"token\":\"%s\"}]",token);
-    printf("SENDING: %s\n\n---\n",outbuf);
-    ret=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,outbuf,strlen(outbuf));
-    if(ret!=NO_ERROR) {
-      printf("WinHttpWebSocketSend failure %d\n",GetLastError());
-      return -1;
-    }
+    return;
   }
-  return 0;
+  return;
 }
 
-void handleUTF8(const char *payload) {
-  if(!strcmp(payload,"42/api/circuit-data,[\"authorized\"]")) {
-    printf("Authorized!... sending zone registration\n");
-  } else {
-    printf("UNKNOWN PAYLOAD: %s\n",payload);
-  }
-}
-
-void WebSocket::looper() {
+void WebSocket::looper(void(*UTFhandler)(const char *)) {
   DWORD ret;
   char buf[8192];
   char *bufp=buf;
   DWORD remaining=8192;
   DWORD incoming;
   WINHTTP_WEB_SOCKET_BUFFER_TYPE bType;
-  
-//  DWORD dwSize = 0;
-//  DWORD dwDownloaded = 0;
-//  BYTE rgbBuffer[1024];
-//  BYTE *pbCurrentBufferPointer = rgbBuffer;
-//  DWORD dwBufferLength = ARRAYSIZE(rgbBuffer);
-//  DWORD dwBytesTransferred = 0;
-//  DWORD dwCloseReasonLength = 0;
-
   
   if(!hWebsocket) {
     printf("ERROR: WebSocket is not open.  cannot use it to loop\n");
@@ -231,9 +190,9 @@ void WebSocket::looper() {
     } else {
       if(bType==WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT
-        printf("WEBSOCKET: Received UTF8 Message -- %d bytes\n",incoming);
+        //printf("WEBSOCKET: Received UTF8 Message -- %d bytes\n",incoming);
 #endif
-        handleUTF8(buf);
+        UTFhandler(buf);
       } else if(bType==WINHTTP_WEB_SOCKET_UTF8_FRAGMENT_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT
         printf("WEBSOCKET: Received UTF8 Fragment -- %d bytes\n",incoming);
@@ -250,6 +209,8 @@ void WebSocket::looper() {
 #ifdef DEBUG_PRINT
         printf("WEBSOCKET: Received %d (Close=4) Buffer -- %d bytes\n",bType, incoming);
 #endif
+        ensureClosed();
+        return;
       }
     }
   }

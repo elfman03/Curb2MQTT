@@ -6,3 +6,6 @@ CURB_PASSWORD=myPassword
 #
 CURB_CLIENT_ID=client_id
 CURB_CLIENT_SECRET=client_secret
+#
+#
+CURB_UID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee

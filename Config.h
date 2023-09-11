@@ -8,6 +8,7 @@ private:
   char *curbPassword;
   char *curbClientId;
   char *curbClientSecret;
+  char *curbUID;
   
 public:
   Config();
@@ -16,6 +17,7 @@ public:
   const char *getCurbPassword();
   const char *getCurbClientId();
   const char *getCurbClientSecret();
+  const char *getCurbUID();
 
 };
 
