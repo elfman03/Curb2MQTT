@@ -7,15 +7,6 @@
 //socket.io useful reference:
 //https://socket.io/docs/v4/socket-io-protocol/#format
 
-/*
- *
- * API Constants from the Curb API
- *           https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
- *
- */
-#define API_HOST L"app.energycurb.com"
-#define API_PATH L"/socket.io/?EIO=3&transport=websocket"
-
 WebSocket::WebSocket() { }
 
 // Based on Windows Samples
@@ -52,37 +43,30 @@ void WebSocket::ensureClosed() {
 }
 
 //
-// Connect curb and get a newly converted websocket
+// Connect to host and get a newly converted websocket
 //
-int WebSocket::createWebSocket() {
+int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path) {
   BOOL  bResults = FALSE;
   HINTERNET  hRequest = NULL;
-
-//  wchar_t *auth_head=new wchar_t[strlen(token)+100];
-//  swprintf(auth_head,L"authorization: Bearer %hs\r\n",token);
-//  wprintf(L"auth_head=%s\n",auth_head);
 
   //
   // Use WinHttpOpen to obtain a session handle.
   //
-  hSession = WinHttpOpen( L"Curb2Mqtt/1.0",  WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0 );
+  hSession = WinHttpOpen( agent,  WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0 );
   if(!hSession) {
     printf("WinHttpOpen failure %d\n",GetLastError());
   } else {
     //
     // Specify an HTTP server.
     //
-    hConnect = WinHttpConnect( hSession, API_HOST, INTERNET_DEFAULT_HTTPS_PORT, 0 );
+    hConnect = WinHttpConnect( hSession, host, INTERNET_DEFAULT_HTTPS_PORT, 0 );
     if(!hConnect) {
       printf("WinHttpConnect failure %d\n",GetLastError());
     } else {
       //
       // Create an HTTP request handle.
       //
-      hRequest = WinHttpOpenRequest( hConnect, L"GET", API_PATH,
-                                     NULL, WINHTTP_NO_REFERER, 
-                                     WINHTTP_DEFAULT_ACCEPT_TYPES, 
-                                     WINHTTP_FLAG_SECURE );
+      hRequest = WinHttpOpenRequest( hConnect, L"GET", path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE );
       if(!hRequest) {
         printf("WinHttpOpenRequest failure %d\n",GetLastError());
       } else {
@@ -149,7 +133,6 @@ int WebSocket::createWebSocket() {
     return -1;  // not success
   }
   return 0;     // success
-  //ensureClosed();
 }
 
 void WebSocket::postUTF8(const char *outbuf) {

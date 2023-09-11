@@ -12,7 +12,7 @@ private:
   
 public:
   WebSocket();
-  int createWebSocket();
+  int createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path);
   void looper(void(*UTFhandler)(const char *));  // receive stuff!
   void postUTF8(const char *);                   // post message to websocket
 };

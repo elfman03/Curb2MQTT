@@ -12,6 +12,18 @@ WebSocket *myWS=new WebSocket();
 DWORD startTicks;
 DWORD continueTicks;
 
+#define AGENT L"Curb2Mqtt/1.0"
+/*
+ *
+ * API Constants from the Curb API
+ *           https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
+ *
+ */
+#define API_HOST L"app.energycurb.com"
+#define API_PATH L"/socket.io/?EIO=3&transport=websocket"
+
+
+
 // based on https://github.com/microsoft/Windows-classic-samples/blob/main/Samples/WinhttpWebsocket/cpp/WinhttpWebsocket.cpp
 // https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
 
@@ -61,7 +73,7 @@ void main() {
   printf("Retrieving Curb Access Token\n");
   const char *c=myToken->getAuthToken(myConfig, false);
   printf("Creating WebSocket\n");
-  myWS->createWebSocket();
+  myWS->createWebSocket(AGENT, API_HOST, API_PATH);
   startTicks=GetTickCount();
   continueTicks=startTicks+60000;
   myWS->postUTF8("40/api/circuit-data");
