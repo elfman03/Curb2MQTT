@@ -7,7 +7,10 @@
 //socket.io useful reference:
 //https://socket.io/docs/v4/socket-io-protocol/#format
 
-WebSocket::WebSocket() { }
+WebSocket::WebSocket() { 
+  logfile=0;
+  hSession=hConnect=hWebsocket=0;
+}
 
 // Based on Windows Samples
 //
@@ -24,14 +27,19 @@ int WebSocket::ensureClosed() {
   if(hWebsocket) {
     ret=WinHttpWebSocketClose(hWebsocket, WINHTTP_WEB_SOCKET_SUCCESS_CLOSE_STATUS, NULL, 0);
     if(ret!=ERROR_SUCCESS) {
-      printf("WinHttpWebSocketClose failure %d\n",GetLastError());
+      fprintf(stderr,"WinHttpWebSocketClose failure %d\n",GetLastError());
+      if(logfile && logfile!=stderr) { fprintf(logfile,"WinHttpWebSocketClose failure %d\n",GetLastError()); }
     } else {
       ret = WinHttpWebSocketQueryCloseStatus(hWebsocket, &closeStatus, closeReason, ARRAYSIZE(closeReason), &crl);
       if(ret!=ERROR_SUCCESS) {
-        printf("WinHttpQueryCloseStatus failure %d\n",GetLastError());
+        fprintf(stderr, "WinHttpQueryCloseStatus failure %d\n",GetLastError());
+        if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpQueryCloseStatus failure %d\n",GetLastError()); }
       } else {
 #ifdef DEBUG_PRINT_WEBSOCKET
-        wprintf(L"The server closed the connection with status code: '%d' and reason: '%.*S'\n", (int)closeStatus, crl, closeReason);
+        if(logfile) {
+          wfprintf(logfile,L"The server closed the connection with status code: '%d' and reason: '%.*S'\n", 
+                           (int)closeStatus, crl, closeReason);
+        }
 #endif
       }
     }
@@ -46,7 +54,7 @@ int WebSocket::ensureClosed() {
 //
 // Connect to host and get a newly converted websocket
 //
-int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path) {
+int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path, FILE *logfile) {
   BOOL  bResults = FALSE;
   HINTERNET  hRequest = NULL;
 
@@ -55,21 +63,24 @@ int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path) {
   //
   hSession = WinHttpOpen( agent,  WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0 );
   if(!hSession) {
-    printf("WinHttpOpen failure %d\n",GetLastError());
+    fprintf(stderr,"WinHttpOpen failure %d\n",GetLastError());
+    if(logfile && logfile!=stderr) {fprintf(logfile,"WinHttpOpen failure %d\n",GetLastError()); }
   } else {
     //
     // Specify an HTTP server.
     //
     hConnect = WinHttpConnect( hSession, host, INTERNET_DEFAULT_HTTPS_PORT, 0 );
     if(!hConnect) {
-      printf("WinHttpConnect failure %d\n",GetLastError());
+      fprintf(stderr,"WinHttpConnect failure %d\n",GetLastError());
+      if(logfile && logfile!=stderr) { fprintf(logfile,"WinHttpConnect failure %d\n",GetLastError()); }
     } else {
       //
       // Create an HTTP request handle.
       //
       hRequest = WinHttpOpenRequest( hConnect, L"GET", path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE );
       if(!hRequest) {
-        printf("WinHttpOpenRequest failure %d\n",GetLastError());
+        fprintf(stderr,"WinHttpOpenRequest failure %d\n",GetLastError());
+        if(logfile && logfile!=stderr) { fprintf(logfile,"WinHttpOpenRequest failure %d\n",GetLastError()); }
       } else {
         //
         // Request protocol upgrade from http to websocket.
@@ -77,21 +88,24 @@ int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path) {
 #pragma prefast(suppress:6387, "WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET does not take any arguments.")
         bResults = WinHttpSetOption(hRequest, WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET, NULL, 0);
         if(!bResults) {
-          printf("WinHttpSetOption failure %d\n",GetLastError());
+          fprintf(stderr, "WinHttpSetOption failure %d\n",GetLastError());
+          if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpSetOption failure %d\n",GetLastError()); }
         } else {
           //
           // Send a request.
           //
           bResults = WinHttpSendRequest( hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, NULL, 0, 0, 0 );
           if(!bResults) {
-            printf("WinHttpSendRequest failure %d\n",GetLastError());
+            fprintf(stderr, "WinHttpSendRequest failure %d\n",GetLastError());
+            if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpSendRequest failure %d\n",GetLastError()); }
           } else {
             //
             // End the request.
             //
             bResults = WinHttpReceiveResponse( hRequest, NULL );
             if(!bResults) {
-              printf("WinHttpReceiveResponse failure %d\n",GetLastError());
+              fprintf(stderr, "WinHttpReceiveResponse failure %d\n",GetLastError());
+              if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpReceiveResponse failure %d\n",GetLastError()); }
             } else {
               // https://stackoverflow.com/questions/23906654/how-to-get-http-status-code-from-winhttp-request
               DWORD dwStatusCode=0,
@@ -102,19 +116,21 @@ int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path) {
                                   &dwStatusCode, &dwSize, 
                                   WINHTTP_NO_HEADER_INDEX);
               if(dwStatusCode!=101) {
-                printf("WinHttpQueryHeaders response code not 101: %d\n",GetLastError());
+                fprintf(stderr, "WinHttpQueryHeaders response code not 101: %d\n",GetLastError());
+                if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpQueryHeaders response code not 101: %d\n",GetLastError()); }
               } else {
                 //
                 // Complete client side Websocket promotion
                 //
                 hWebsocket = WinHttpWebSocketCompleteUpgrade(hRequest, NULL);
                 if(!hWebsocket) {
-                  printf("WinHttpWebSocketCompleteUpgrade failure %d\n",GetLastError());
+                  fprintf(stderr, "WinHttpWebSocketCompleteUpgrade failure %d\n",GetLastError());
+                  if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpWebSocketCompleteUpgrade failure %d\n",GetLastError()); }
                 } else {
                   WinHttpCloseHandle(hRequest);
                   hRequest=0;
 #ifdef DEBUG_PRINT_WEBSOCKET
-                  printf("Successfully upgraded to Client WebSocket!\n");
+                  if(logfile) { fprintf(logfile, "Successfully upgraded to Client WebSocket!\n"); }
 #endif
                 }
               }
@@ -139,15 +155,17 @@ int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path) {
 void WebSocket::postUTF8(const char *outbuf) {
   DWORD ret;
   if(!hWebsocket) {
-    printf("ERROR: WebSocket is not open.  cannot use it to post\n");
+    fprintf(stderr, "ERROR: WebSocket is not open.  cannot use it to post\n");
+    if(logfile && logfile!=stderr) { fprintf(logfile, "ERROR: WebSocket is not open.  cannot use it to post\n"); }
     return;
   }
 #ifdef DEBUG_PRINT_WEBSOCKET
-  printf("SENDING: %s\n",outbuf);
+  if(logfile) { fprintf(logfile,"SENDING: %s\n",outbuf); }
 #endif
   ret=WinHttpWebSocketSend(hWebsocket,WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE,(PVOID)outbuf,strlen(outbuf));
   if(ret!=NO_ERROR) {
-    printf("WinHttpWebSocketSend failure %d\n",GetLastError());
+    fprintf(stderr, "WinHttpWebSocketSend failure %d\n",GetLastError());
+    if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpWebSocketSend failure %d\n",GetLastError()); }
     return;
   }
   return;
@@ -162,7 +180,8 @@ int WebSocket::looper(void(*UTFhandler)(const char *)) {
   WINHTTP_WEB_SOCKET_BUFFER_TYPE bType;
   
   if(!hWebsocket) {
-    printf("ERROR: WebSocket is not open.  cannot use it to loop\n");
+    fprintf(stderr, "ERROR: WebSocket is not open.  cannot use it to loop\n");
+    if(logfile && logfile!=stderr) { fprintf(logfile, "ERROR: WebSocket is not open.  cannot use it to loop\n"); }
     return -1;
   }
  
@@ -170,29 +189,30 @@ int WebSocket::looper(void(*UTFhandler)(const char *)) {
     ret = WinHttpWebSocketReceive(hWebsocket, bufp, remaining, &incoming, &bType);
     buf[incoming]=0;
     if(ret!=NO_ERROR) {
-      printf("WinHttpWebSocketReceive failure %d\n",GetLastError());
+      fprintf(stderr, "WinHttpWebSocketReceive failure ret=%d - lasterr=%d\n",ret, GetLastError());
+      if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpWebSocketReceive failure ret=%d - lasterr=%d\n",ret, GetLastError()); }
       return -1;
     } else {
       if(bType==WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT_WEBSOCKET
-        //printf("WEBSOCKET: Received UTF8 Message -- %d bytes\n",incoming);
+        //if(logfile) { fprintf(logfile, "WEBSOCKET: Received UTF8 Message -- %d bytes\n",incoming); }
 #endif
         UTFhandler(buf);
       } else if(bType==WINHTTP_WEB_SOCKET_UTF8_FRAGMENT_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT_WEBSOCKET
-        printf("WEBSOCKET: Received UTF8 Fragment -- %d bytes\n",incoming);
+        if(logfile) { fprintf(logfile, "WEBSOCKET: Received UTF8 Fragment -- %d bytes\n",incoming); }
 #endif
       } else if(bType==WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT_WEBSOCKET
-        printf("WEBSOCKET: Received Binary Message -- %d bytes\n",incoming);
+        if(logfile) { fprintf(logfile, "WEBSOCKET: Received Binary Message -- %d bytes\n",incoming); }
 #endif
       } else if(bType==WINHTTP_WEB_SOCKET_BINARY_FRAGMENT_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT_WEBSOCKET
-        printf("WEBSOCKET: Received Binary Fragment -- %d bytest\n",incoming);
+        if(logfile) { fprintf(logfile, "WEBSOCKET: Received Binary Fragment -- %d bytest\n",incoming); }
 #endif
       } else if(bType==WINHTTP_WEB_SOCKET_CLOSE_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT_WEBSOCKET
-        printf("WEBSOCKET: Received %d (Close=4) Buffer -- %d bytes\n",bType, incoming);
+        f(logfile) { fprintf(logfile, "WEBSOCKET: Received %d (Close=4) Buffer -- %d bytes\n",bType, incoming); }
 #endif
         return ensureClosed();
       }

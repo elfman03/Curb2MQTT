@@ -17,9 +17,10 @@ AuthToken::AuthToken() {
 const char *AuthToken::getAuthToken(Config *config, bool forceNew) {
   // If already have an authcode and we dont want to force a new one then just return the current one.
   //
+  FILE *log=config->getLogfile();
   if(!forceNew && authCode) { 
 #ifdef DEBUG_PRINT_AUTH
-     printf("Returning existing AuthCode\n");
+     if(log) { fprintf(log,"Returning existing AuthCode\n"); }
 #endif
   } else {
     //
@@ -57,13 +58,14 @@ const char *AuthToken::fetchNewToken(Config *config) {
   HINTERNET  hSession = NULL, 
              hConnect = NULL,
              hRequest = NULL;
+  FILE *log=config->getLogfile();
 
   char post_data[1024];
   sprintf(post_data,"{\"grant_type\": \"password\", \"audience\": \"app.energycurb.com/api\", \"username\": \"%s\", \"password\": \"%s\", \"client_id\": \"%s\", \"client_secret\": \"%s\", \"redirect_uri\": \"http://localhost:8000\"}", config->getCurbUsername(), config->getCurbPassword(), config->getCurbClientId(), config->getCurbClientSecret());
   DWORD post_len=strlen(post_data);
   wchar_t *post_head=L"Content-Type: application/json\r\n";
 #ifdef DEBUG_PRINT_AUTH
-  printf("Post payload is %s\n",post_data);
+  if(log) { fprintf(log, "Post payload is %s\n",post_data); }
 #endif
 
   if(authBuf) {
@@ -86,7 +88,8 @@ const char *AuthToken::fetchNewToken(Config *config) {
   if( hSession ) {
     hConnect = WinHttpConnect( hSession, AUTH_HOST, INTERNET_DEFAULT_HTTPS_PORT, 0 );
   } else {
-    printf( "WinHttpOpen Error %d has occurred.\n", GetLastError( ) );
+    fprintf(stderr, "WinHttpOpen Error %d has occurred.\n", GetLastError( ) );
+    if(log && log!=stderr) { fprintf(log, "WinHttpOpen Error %d has occurred.\n", GetLastError( ) ); }
     return 0;
   }
 
@@ -98,7 +101,8 @@ const char *AuthToken::fetchNewToken(Config *config) {
                                    WINHTTP_DEFAULT_ACCEPT_TYPES, 
                                    WINHTTP_FLAG_SECURE );
   } else {
-    printf( "WinHttpConnect Error %d has occurred.\n", GetLastError( ) );
+    fprintf(stderr,"WinHttpConnect Error %d has occurred.\n", GetLastError( ) );
+    if(log && log!=stderr) { fprintf(log,"WinHttpConnect Error %d has occurred.\n", GetLastError( ) ); }
     WinHttpCloseHandle( hSession );
     return 0;
   }
@@ -107,7 +111,8 @@ const char *AuthToken::fetchNewToken(Config *config) {
   if( hRequest ) {
     bResults = WinHttpSendRequest( hRequest, post_head, -1, post_data, post_len, post_len, 0 );
   } else {
-    printf( "WinHttpOpenRequest Error %d has occurred.\n", GetLastError( ) );
+    fprintf(stderr,"WinHttpOpenRequest Error %d has occurred.\n", GetLastError( ) );
+    if(log && log!=stderr) { fprintf(log,"WinHttpOpenRequest Error %d has occurred.\n", GetLastError( ) ); }
     WinHttpCloseHandle( hSession );
     WinHttpCloseHandle( hConnect );
     return 0;
@@ -117,7 +122,8 @@ const char *AuthToken::fetchNewToken(Config *config) {
   if( bResults ) {
     bResults = WinHttpReceiveResponse( hRequest, NULL );
   } else {
-    printf( "WinHttpSendRequest Error %d has occurred.\n", GetLastError( ) );
+    fprintf(stderr,"WinHttpSendRequest Error %d has occurred.\n", GetLastError( ) );
+    if(log && log!=stderr) { fprintf(log,"WinHttpSendRequest Error %d has occurred.\n", GetLastError( ) ); }
     WinHttpCloseHandle( hRequest );
     WinHttpCloseHandle( hSession );
     WinHttpCloseHandle( hConnect );
@@ -135,7 +141,7 @@ const char *AuthToken::fetchNewToken(Config *config) {
                         &dwStatusCode, &dwSize, 
                         WINHTTP_NO_HEADER_INDEX);
 #ifdef DEBUG_PRINT_AUTH
-    printf("get_curb_token recv status=%d\n",dwStatusCode);
+    if(log) { fprintf(log, "get_curb_token recv status=%d\n",dwStatusCode); }
 #endif
 
     do 
@@ -143,18 +149,20 @@ const char *AuthToken::fetchNewToken(Config *config) {
       // Check for available data.
       dwSize = 0;
       if( !WinHttpQueryDataAvailable( hRequest, &dwSize ) )
-        printf( "Error %u in WinHttpQueryDataAvailable.\n",
-                GetLastError( ) );
+        fprintf(stderr,"Error %u in WinHttpQueryDataAvailable.\n", GetLastError( ) );
+        if(log && log!=stderr) { fprintf(log,"Error %u in WinHttpQueryDataAvailable.\n", GetLastError( ) ); }
 
       if(index+dwSize+1 > AUTH_MAX) {
-        printf("CURB AUTH failed\n");
+        fprintf(stderr,"CURB AUTH failed\n");
+        if(log && log!=stderr) { fprintf(log,"CURB AUTH failed\n"); }
         exit(0);
       }
       if( !WinHttpReadData( hRequest, (LPVOID)&authBuf[index], dwSize, &dwDownloaded ) ) {
-        printf( "Error %u in WinHttpReadData.\n", GetLastError( ) );
+        fprintf(stderr, "Error %u in WinHttpReadData.\n", GetLastError( ) );
+        if(log && log!=stderr) { fprintf(log, "Error %u in WinHttpReadData.\n", GetLastError( ) ); }
       } else {
 #ifdef DEBUG_PRINT_AUTH
-        printf( "%s", &authBuf[index] );
+        if(log) { fprintf(log, "%s", &authBuf[index] ); }
 #endif
       }
       index=index+dwSize;
@@ -165,10 +173,11 @@ const char *AuthToken::fetchNewToken(Config *config) {
     p2[0]=0;
     authCode=p;
 #ifdef DEBUG_PRINT_AUTH
-    printf("\n---\n%s\n---\n",authCode);
+    if(log) { fprintf(log, "\n---\n%s\n---\n",authCode); }
 #endif
   } else {
-    printf( "WinHttpReceiveResponse Error %d has occurred.\n", GetLastError( ) );
+    fprintf(stderr, "WinHttpReceiveResponse Error %d has occurred.\n", GetLastError( ) );
+    if(log && log!=stderr) { fprintf(log, "WinHttpReceiveResponse Error %d has occurred.\n", GetLastError( ) ); }
     WinHttpCloseHandle( hRequest );
     WinHttpCloseHandle( hSession );
     WinHttpCloseHandle( hConnect );
@@ -177,7 +186,8 @@ const char *AuthToken::fetchNewToken(Config *config) {
 
   // Report any errors.
   if( !bResults ) {
-    printf( "Error %d has occurred.\n", GetLastError( ) );
+    fprintf(stderr,"Error %d has occurred.\n", GetLastError( ) );
+    if(log && log!=stderr) { fprintf(log,"Error %d has occurred.\n", GetLastError( ) ); }
   } 
 
   // Close any open handles.

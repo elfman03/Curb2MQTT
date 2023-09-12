@@ -1,3 +1,10 @@
+#
+# where should logs go?
+#
+LOGFILE=stdout
+#
+# CURB credentials
+#
 CURB_USERNAME=user@foo.org
 CURB_PASSWORD=myPassword
 #
@@ -7,5 +14,20 @@ CURB_PASSWORD=myPassword
 CURB_CLIENT_ID=client_id
 CURB_CLIENT_SECRET=client_secret
 #
+# My curb's unique identifier
 #
 CURB_UID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+#
+# The circuit names I want to track and their on/off threhold in watts (can have up to 8)
+#
+CIRCUIT_NAME_0=Furnace
+CIRCUIT_THRESHOLD_0=100
+#
+CIRCUIT_NAME_1=AC
+CIRCUIT_THRESHOLD_1=100
+#
+CIRCUIT_NAME_2=Laundry-Washer
+CIRCUIT_THRESHOLD_2=100
+#
+CIRCUIT_NAME_3=Solar
+CIRCUIT_THRESHOLD_3=-2000

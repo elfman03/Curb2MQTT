@@ -4,6 +4,8 @@
 class Config {
 
 private:
+  FILE *logfile;
+  char *logfileName;
   char *curbUsername;
   char *curbPassword;
   char *curbClientId;
@@ -15,6 +17,7 @@ private:
 public:
   Config();
   void readConfig(const char *fname);
+  FILE *getLogfile();
   const char *getCurbUsername();
   const char *getCurbPassword();
   const char *getCurbClientId();

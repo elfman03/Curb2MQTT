@@ -14,6 +14,7 @@ DWORD continueTick;
 const char *circuitNames[8];
 char *circuitLabels[8];
 int circuitThresholds[8];
+FILE *logfile;
 
 #define AGENT L"Curb2Mqtt/1.0"
 /*
@@ -28,7 +29,9 @@ int circuitThresholds[8];
 void processDataPacket(const char *payload) {
   int i,watt;
   const char *p,*q;
-  //printf("payload=%s\n",payload);
+#ifdef DEBUG_PRINT_MAIN
+  //if(logfile) { fprintf(logfile,"payload=%s\n",payload); }
+#endif
   for(i=0;i<8;i++) {
     if(circuitLabels[i]) {
       p=strstr(payload,circuitLabels[i]);
@@ -38,12 +41,14 @@ void processDataPacket(const char *payload) {
         }
         if(p>payload) {
           watt=atoi(&p[4]);
-          printf("%s: %d\n",circuitNames[i],watt);
+#ifdef DEBUG_PRINT_MAIN
+       if(logfile) { fprintf(logfile,"%s: %d\n",circuitNames[i],watt); }
+#endif
         } else {
-          printf("ERROR: could not find \"w\": for %s in payload %s\n",circuitNames[i],payload);
+          fprintf(stderr,"ERROR: could not find \"w\": for %s in payload %s\n",circuitNames[i],payload);
         }
       } else {
-        printf("ERROR: could not find %s in payload %s\n",circuitLabels[i],payload);
+        fprintf(stderr,"ERROR: could not find %s in payload %s\n",circuitLabels[i],payload);
       }
     }
   }
@@ -67,7 +72,9 @@ void handleUTF8(const char *payload) {
     //
     DWORD tick=GetTickCount();
     if(!firstTick) { firstTick=tick; continueTick=tick+60000; }
-    printf("t=%0.1f circuit data payload\n",(tick-firstTick)/1000.0);
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile) { fprintf(logfile,"t=%0.1f circuit data payload\n",(tick-firstTick)/1000.0); }
+#endif
     //
     // ... UNDOCUMENTED IN THE CURB API ...
     // After about 70-80 seconds the server side tends to close the websocket with status websocket 1000 ("Normal Closure").
@@ -76,34 +83,45 @@ void handleUTF8(const char *payload) {
     if(tick>continueTick) {
       myWS->postUTF8("42");
       continueTick=tick+60000;
+#ifdef DEBUG_PRINT_MAIN
+      if(logfile) { fflush(logfile); }
+#endif
     }
     processDataPacket(payload);
   } else if(!strcmp(payload,"40/api/circuit-data")) {
     //
     // Initial 40/api/circuit-data was received by server. can now authenticate
     //
-    printf("initializing... sending authentication...\n");
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile) { fprintf(logfile, "initializing... sending authentication...\n"); }
+#endif
     sprintf(outbuf,"42/api/circuit-data,[\"authenticate\",{\"token\":\"%s\"}]",myToken->getAuthToken(myConfig, false));
     myWS->postUTF8(outbuf);
   } else if(!strcmp(payload,"42/api/circuit-data,[\"authorized\"]")) {
     //
     // Authentication was received by the server.  can now subscribe.
     //
-    printf("Authorized!... sending zone registration\n");
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile) { fprintf(logfile, "Authorized!... sending zone registration\n"); }
+#endif
     sprintf(outbuf,"42/api/circuit-data,[\"subscribe\",\"%s\"]",myConfig->getCurbUID());
     myWS->postUTF8(outbuf);
   } else {
-    printf("UHANDLED PAYLOAD: %s\n",payload);
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile) { fprintf(logfile, "UHANDLED PAYLOAD: %s\n",payload); }
+#endif
   }
 }
 
 void main() {
-  int ret;
+  int status;
   //
   // Load Config
   //
-  printf("Loading Config File\n");
+  fprintf(stderr, "Loading Config File\n");
   myConfig->readConfig("Curb2MQTT.config");
+  logfile=myConfig->getLogfile();
+  if(logfile) { fprintf(logfile, "Loaded Config File\n"); }
   for(int i=0;i<8;i++) {
     const char *n=myConfig->getCircuitName(i);
     if(n) {
@@ -116,35 +134,47 @@ void main() {
     }
     circuitThresholds[i]=myConfig->getCircuitThreshold(i);
     if(circuitNames[i]) {
-      printf("Circuit %d: '%s' -- threshold=%d\n",i,circuitNames[i],circuitThresholds[i]);
+#ifdef DEBUG_PRINT_MAIN
+      if(logfile) { fprintf(logfile,"Circuit %d: '%s' -- threshold=%d\n",i,circuitNames[i],circuitThresholds[i]); }
+#endif
     }
   }
 
   //
   // Loop as long as the websocket returns a normal exit condition.  Should be about 2 hours at a go.
   //
-  for(ret=1000;ret==1000;) {
+  for(status=1000;status==1000;) {
     //
     firstTick=continueTick=0;
     //
     // Fetch Access Token
     //
-    printf("Retrieving Curb Access Token\n");
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile) { fprintf(logfile, "Retrieving Curb Access Token\n"); }
+#endif
     const char *c=myToken->getAuthToken(myConfig, true);
     //
     // Create WebSocket and Trigger it
     //
-    printf("Creating WebSocket\n");
-    myWS->createWebSocket(AGENT, API_HOST, API_PATH);
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile) { fprintf(logfile,"Creating WebSocket\n"); }
+#endif
+    myWS->createWebSocket(AGENT, API_HOST, API_PATH, logfile);
     myWS->postUTF8("40/api/circuit-data");
-    ret=myWS->looper(&handleUTF8);
+    status=myWS->looper(&handleUTF8);
     //
     // Why did looper end?
     //
     DWORD tick=GetTickCount();
-    printf("Looper ended with status %d (normal=1000) after %0.1f seconds\n",ret,(tick-firstTick)/1000.0);
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile) { 
+       fprintf(logfile, "Looper ended with status %d (normal=1000) after %0.1f seconds\n",status,(tick-firstTick)/1000.0);
+       fflush(logfile); 
+    }
+#endif
     // If we had a normal exit, wait 3 seconds before iterating
-    if(ret==1000) { Sleep(3000); } 
+    if(status==1000) { Sleep(3000); } 
   }
+  //if(logfile && logfile!=stderr && logfile!=stdout) { fclose(logfile); } // should be in Config.cpp destructor?
 }
 
