@@ -108,7 +108,7 @@ void handleUTF8(const char *payload) {
     myWS->postUTF8(outbuf);
   } else {
 #ifdef DEBUG_PRINT_MAIN
-    if(logfile) { fprintf(logfile, "UHANDLED PAYLOAD: %s\n",payload); }
+    if(logfile) { fprintf(logfile, "UNHANDLED PAYLOAD: %s\n",payload); }
 #endif
   }
 }
