@@ -11,6 +11,9 @@ AuthToken *myToken=new AuthToken();
 WebSocket *myWS=new WebSocket();
 DWORD firstTick;
 DWORD continueTick;
+const char *circuitNames[8];
+char *circuitLabels[8];
+int circuitThresholds[8];
 
 #define AGENT L"Curb2Mqtt/1.0"
 /*
@@ -21,6 +24,30 @@ DWORD continueTick;
  */
 #define API_HOST L"app.energycurb.com"
 #define API_PATH L"/socket.io/?EIO=3&transport=websocket"
+
+void processDataPacket(const char *payload) {
+  int i,watt;
+  const char *p,*q;
+  //printf("payload=%s\n",payload);
+  for(i=0;i<8;i++) {
+    if(circuitLabels[i]) {
+      p=strstr(payload,circuitLabels[i]);
+      if(p) {
+        for(p=p-4; (p>payload) && ((p[0]!='"') || (p[1]!='w') || (p[2]!='"') || (p[3]!=':')); ) {
+          p=p-1;
+        }
+        if(p>payload) {
+          watt=atoi(&p[4]);
+          printf("%s: %d\n",circuitNames[i],watt);
+        } else {
+          printf("ERROR: could not find \"w\": for %s in payload %s\n",circuitNames[i],payload);
+        }
+      } else {
+        printf("ERROR: could not find %s in payload %s\n",circuitLabels[i],payload);
+      }
+    }
+  }
+}
 
 //
 // See https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
@@ -50,6 +77,7 @@ void handleUTF8(const char *payload) {
       myWS->postUTF8("42");
       continueTick=tick+60000;
     }
+    processDataPacket(payload);
   } else if(!strcmp(payload,"40/api/circuit-data")) {
     //
     // Initial 40/api/circuit-data was received by server. can now authenticate
@@ -76,6 +104,21 @@ void main() {
   //
   printf("Loading Config File\n");
   myConfig->readConfig("Curb2MQTT.config");
+  for(int i=0;i<8;i++) {
+    const char *n=myConfig->getCircuitName(i);
+    if(n) {
+      circuitNames[i]=n;
+      circuitLabels[i]=(char*)malloc(strlen(n)+20);
+      sprintf(circuitLabels[i],"\"label\":\"%s\",",n);
+    } else {
+      circuitNames[i]=0;
+      circuitLabels[i]=0;
+    }
+    circuitThresholds[i]=myConfig->getCircuitThreshold(i);
+    if(circuitNames[i]) {
+      printf("Circuit %d: '%s' -- threshold=%d\n",i,circuitNames[i],circuitThresholds[i]);
+    }
+  }
 
   //
   // Loop as long as the websocket returns a normal exit condition.  Should be about 2 hours at a go.

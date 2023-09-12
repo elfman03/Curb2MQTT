@@ -3,11 +3,13 @@
 #include "global.h"
 #include "Config.h"
 
-const char *Config::getCurbUsername()     { return curbUsername;     }
-const char *Config::getCurbPassword()     { return curbPassword;     }
-const char *Config::getCurbClientId()     { return curbClientId;     }
-const char *Config::getCurbClientSecret() { return curbClientSecret; }
-const char *Config::getCurbUID()          { return curbUID;          }
+const char *Config::getCurbUsername()          { return curbUsername;      }
+const char *Config::getCurbPassword()          { return curbPassword;      }
+const char *Config::getCurbClientId()          { return curbClientId;      }
+const char *Config::getCurbClientSecret()      { return curbClientSecret;  }
+const char *Config::getCurbUID()               { return curbUID;           }
+const char *Config::getCircuitName(int i)      { return circuitName[i];      }
+int         Config::getCircuitThreshold(int i) { return circuitThreshold[i]; }
 
 Config::Config() { 
   curbUsername=0;
@@ -15,6 +17,7 @@ Config::Config() {
   curbClientId=0;
   curbClientSecret=0;
   curbUID=0;
+  for(int i=0;i<8;i++) { circuitName[i]=0; circuitThreshold[i]=0; }
 }
 
 //
@@ -31,6 +34,10 @@ void Config::readConfig(const char *fname) {
   if(curbClientId)     { free(curbClientId);     curbClientId=0;     }
   if(curbClientSecret) { free(curbClientSecret); curbClientSecret=0; }
   if(curbUID)          { free(curbUID);          curbUID=0; }
+  for(i=0;i<8;i++) {
+    if(circuitName[i]) { free(circuitName[i]);   circuitName[i]=0; }
+    circuitThreshold[i]=0;
+  }
 
   f=fopen(fname,"r");
   if(!f) {
@@ -83,12 +90,36 @@ void Config::readConfig(const char *fname) {
   curbUID=strdup(&p[9]);
   *q='\n';
 
+  char chartmp[24];
+  for(i=0;i<8;i++) {
+    sprintf(chartmp,"CIRCUIT_NAME_%d=",i);
+    p=strstr(buf,chartmp);
+    if(p) {
+      for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
+      *q=0;
+      circuitName[i]=strdup(&p[15]);
+      *q='\n';
+    }
+    sprintf(chartmp,"CIRCUIT_THRESHOLD_%d=",i);
+    p=strstr(buf,chartmp);
+    if(p) {
+      for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
+      *q=0;
+      circuitThreshold[i]=atoi(&p[20]);
+      *q='\n';
+    }
+  }
+
 #ifdef DEBUG_PRINT_CONFIG
   printf("CURB_USERNAME=%s\n",curbUsername);
   printf("CURB_PASSWORD=%s\n",curbPassword);
   printf("CURB_CLIENT_ID=%s\n",curbClientId);
   printf("CURB_CLIENT_SECRET=%s\n",curbClientSecret);
   printf("CURB_UID=%s\n",curbUID);
+  for(i=0;i<8;i++) {
+    printf("CIRCUIT_NAME_%d=%s\n",i,circuitName[i]);
+    printf("CIRCUIT_THRESHOLD_%d=%d\n",i,circuitThreshold[i]);
+  }
 #endif
 }
 

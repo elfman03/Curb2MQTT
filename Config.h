@@ -9,6 +9,8 @@ private:
   char *curbClientId;
   char *curbClientSecret;
   char *curbUID;
+  char *circuitName[8];
+  int circuitThreshold[8];
   
 public:
   Config();
@@ -18,7 +20,8 @@ public:
   const char *getCurbClientId();
   const char *getCurbClientSecret();
   const char *getCurbUID();
-
+  const char *getCircuitName(int i);
+  int getCircuitThreshold(int i);
 };
 
 #endif
