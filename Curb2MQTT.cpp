@@ -140,9 +140,20 @@ void main() {
        fflush(logfile); 
     }
 #endif
-    // If we had a normal exit, wait 3 seconds before iterating
-    if(status==1000) { Sleep(3000); } 
+    // If we had a normal exit or timeout, wait 3 seconds before iterating
+    if(status==1000) {
+#ifdef DEBUG_PRINT_MAIN
+      if(logfile) { fprintf(logfile, "Normal Exit.  Start over in 3 seconds\n"); }
+#endif
+      Sleep(3000); 
+    } else if(status==12002) { 
+#ifdef DEBUG_PRINT_MAIN
+      if(logfile) { fprintf(logfile, "WebSocket Timed out.  Try again in 3 seconds\n"); }
+#endif
+      status=1000;
+      Sleep(3000); 
+    } 
   }
-  //if(logfile && logfile!=stderr && logfile!=stdout) { fclose(logfile); } // should be in Config.cpp destructor?
+  if(logfile) { fflush(logfile); } // should be in Config.cpp destructor?
 }
 
