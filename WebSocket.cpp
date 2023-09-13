@@ -54,9 +54,11 @@ int WebSocket::ensureClosed() {
 //
 // Connect to host and get a newly converted websocket
 //
-int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path, FILE *logfile) {
+int WebSocket::createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path, FILE *lf) {
   BOOL  bResults = FALSE;
   HINTERNET  hRequest = NULL;
+
+  logfile=lf;
 
   //
   // Use WinHttpOpen to obtain a session handle.
