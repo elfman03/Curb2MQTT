@@ -62,7 +62,13 @@ void handleUTF8(const char *payload) {
       continueTick=tick+60000;
 #ifdef DEBUG_PRINT_MAIN
       if(logfile) { 
-        fprintf(logfile, "DataPayloads: packetCount(60s)=%d packetCount(epoch)=%d epoch=%d epochTime=%0.1fs\n",packetCount,packetCountEpoch,epochNum,(tick-firstTick)/1000.0);
+        int h, m, s, frac;
+        frac=(tick-firstTick);
+        h=frac/(1000*60*60); frac=frac%(1000*60*60);
+        m=frac/(1000*60);    frac=frac%(1000*60);
+        s=frac/(1000);       frac=frac%(1000);
+        frac=frac/100;
+        fprintf(logfile, "DataPayloads: packetCount(60s)=%d packetCount(epoch)=%d epoch=%d epochTime=%d:%02d:%02d.%01d\n",packetCount,packetCountEpoch,epochNum,h,m,s,frac);
         fflush(logfile); 
       }
 #endif
