@@ -193,6 +193,7 @@ int WebSocket::looper(void(*UTFhandler)(const char *)) {
     if(ret!=NO_ERROR) {
       fprintf(stderr, "WinHttpWebSocketReceive failure ret=%d - lasterr=%d\n",ret, GetLastError());
       if(logfile && logfile!=stderr) { fprintf(logfile, "WinHttpWebSocketReceive failure ret=%d (timeout=12002) - lasterr=%d\n",ret, GetLastError()); }
+      ensureClosed();
       return ret;
     } else {
       if(bType==WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE) {
