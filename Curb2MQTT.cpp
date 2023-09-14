@@ -37,6 +37,9 @@ void handleUTF8(const char *payload) {
   char outbuf[1024];
   DWORD ret;
 
+  DWORD tick=GetTickCount();
+  if(!firstTick) { firstTick=tick; continueTick=tick+60000; }
+
   if(payload[0]=='4' && payload[1]=='2' && payload[2]=='/' && payload[22]=='d' && payload[23]=='a') {
     // Short circuit for 42/api/circuit-data,["data",
     //                   0000000000111111111122222222
@@ -47,8 +50,6 @@ void handleUTF8(const char *payload) {
     //
     packetCount++;
     packetCountEpoch++;
-    DWORD tick=GetTickCount();
-    if(!firstTick) { firstTick=tick; continueTick=tick+60000; }
 #ifdef DEBUG_PRINT_MAIN
     //if(logfile) { fprintf(logfile,"t=%0.1f circuit data payload\n",(tick-firstTick)/1000.0); }
 #endif
@@ -140,24 +141,38 @@ void main() {
     // Why did looper end?
     //
     DWORD tick=GetTickCount();
+    if(!firstTick) { firstTick=tick; }
 #ifdef DEBUG_PRINT_MAIN
     if(logfile) { 
-       fprintf(logfile, "Looper ended with status %d (normal=1000) after %0.1f seconds\n",status,(tick-firstTick)/1000.0);
-       fflush(logfile); 
+      int h, m, s, frac;
+      frac=(tick-firstTick);
+      h=frac/(1000*60*60); frac=frac%(1000*60*60);
+      m=frac/(1000*60);    frac=frac%(1000*60);
+      s=frac/(1000);       frac=frac%(1000);
+      frac=frac/100;
+      fprintf(logfile, "Looper ended with status %d (normal=1000) Epoch %d after epochTime=%d:%02d:%02d.%01d packets=%d\n",status,epochNum,h,m,s,frac,packetCountEpoch);
+      fprintf(logfile, "tick=%ul firstTick=%ul",tick,firstTick);
+      fflush(logfile); 
     }
 #endif
     // If we had a normal exit or timeout, wait 3 seconds before iterating
     if(status==1000) {
 #ifdef DEBUG_PRINT_MAIN
-      if(logfile) { fprintf(logfile, "Normal Exit.  Start over in 3 seconds\n"); }
+      if(logfile) { fprintf(logfile, "NORMAL_CLOSURE.  Start over in 3 seconds\n"); }
 #endif
       Sleep(3000); 
     } else if(status==12002) { 
 #ifdef DEBUG_PRINT_MAIN
-      if(logfile) { fprintf(logfile, "WebSocket Timed out.  Try again in 3 seconds\n"); }
+      if(logfile) { fprintf(logfile, "ERROR_WINHTTP_TIMEOUT.  Try again in 5 mins\n"); }
 #endif
       status=1000;
-      Sleep(3000); 
+      Sleep(30000); 
+    } else if(status==12030) { 
+#ifdef DEBUG_PRINT_MAIN
+      if(logfile) { fprintf(logfile, "ERROR_WINHTTP_CONNECTION_ERROR.  Try again in 5 mins\n"); }
+#endif
+      status=1000;
+      Sleep(30000); 
     } 
   }
   if(logfile) { fflush(logfile); } // should be in Config.cpp destructor?
