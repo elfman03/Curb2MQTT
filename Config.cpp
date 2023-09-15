@@ -4,6 +4,8 @@
 #include "Config.h"
 
 FILE       *Config::getLogfile()               { return logfile;             }
+const char *Config::getMqttServer()            { return mqttServer;          }
+const char *Config::getMqttTopicBase()         { return mqttTopicBase;       }
 const char *Config::getCurbUsername()          { return curbUsername;        }
 const char *Config::getCurbPassword()          { return curbPassword;        }
 const char *Config::getCurbClientId()          { return curbClientId;        }
@@ -15,6 +17,8 @@ int         Config::getCircuitThreshold(int i) { return circuitThreshold[i]; }
 Config::Config() { 
   logfile=0;
   logfileName=0;
+  mqttServer=0;
+  mqttTopicBase=0;
   curbUsername=0;
   curbPassword=0;
   curbClientId=0;
@@ -35,6 +39,8 @@ void Config::readConfig(const char *fname) {
   if(logfile && logfile!=stderr && logfile!=stdout) { fclose(logfile); }
   logfile=0;
   if(logfileName)      { free(logfileName);      logfileName=0;      }
+  if(mqttServer)       { free(mqttServer);       mqttServer=0;       }
+  if(mqttTopicBase)    { free(mqttTopicBase);    mqttTopicBase=0;    }
   if(curbUsername)     { free(curbUsername);     curbUsername=0;     }
   if(curbPassword)     { free(curbPassword);     curbPassword=0;     }
   if(curbClientId)     { free(curbClientId);     curbClientId=0;     }
@@ -79,6 +85,18 @@ void Config::readConfig(const char *fname) {
       logfile=fopen(logfileName,"w");
     }
   }
+
+  p=strstr(buf,"MQTT_SERVER=");
+  for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
+  *q=0;
+  mqttServer=strdup(&p[14]);
+  *q='\n';
+
+  p=strstr(buf,"MQTT_TOPIC_BASE=");
+  for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
+  *q=0;
+  mqttTopicBase=strdup(&p[14]);
+  *q='\n';
 
   p=strstr(buf,"CURB_USERNAME=");
   for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
@@ -133,6 +151,8 @@ void Config::readConfig(const char *fname) {
 #ifdef DEBUG_PRINT_CONFIG
   if(logfile) { 
     fprintf(logfile,"LOGFILE=%s\n",logfileName);
+    fprintf(logfile,"MQTT_SERVER=%s\n",mqttServer);
+    fprintf(logfile,"MQTT_TOPIC_BASE=%s\n",mqttTopicBase);
     fprintf(logfile,"CURB_USERNAME=%s\n",curbUsername);
     fprintf(logfile,"CURB_PASSWORD=%s\n",curbPassword);
     fprintf(logfile,"CURB_CLIENT_ID=%s\n",curbClientId);

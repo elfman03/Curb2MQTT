@@ -6,6 +6,8 @@ class Config {
 private:
   FILE *logfile;
   char *logfileName;
+  char *mqttServer;
+  char *mqttTopicBase;
   char *curbUsername;
   char *curbPassword;
   char *curbClientId;
@@ -18,6 +20,8 @@ public:
   Config();
   void readConfig(const char *fname);
   FILE *getLogfile();
+  const char *getMqttServer();
+  const char *getMqttTopicBase();
   const char *getCurbUsername();
   const char *getCurbPassword();
   const char *getCurbClientId();

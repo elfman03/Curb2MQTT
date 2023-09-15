@@ -1,6 +1,6 @@
 
 OPTS=/MD /EHsc 
-OBJS=Config.obj AuthToken.obj WebSocket.obj CircuitStateManager.obj
+OBJS=Config.obj AuthToken.obj WebSocket.obj CircuitStateManager.obj PahoWrapper.obj
 PAHO_I=../paho.mqtt.c/src
 PAHO_L=../paho.mqtt.c/src/Release/paho-mqtt3a.lib
 
