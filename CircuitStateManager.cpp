@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "global.h"
 #include "Config.h"
+#include "PahoWrapper.h"
 #include "CircuitStateManager.h"
 
 #define UNK -1
@@ -31,6 +32,7 @@ CircuitStateManager::CircuitStateManager(Config *config) {
 #endif
     }
   }
+  mqttWrapper=new PahoWrapper(config);
 }
 
 void CircuitStateManager::processDataPacket(const char *payload) {

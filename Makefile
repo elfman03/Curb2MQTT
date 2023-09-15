@@ -16,7 +16,7 @@ AuthToken.obj: AuthToken.cpp AuthToken.h Config.h global.h
 WebSocket.obj: WebSocket.cpp WebSocket.h global.h
 	cl $(OPTS) /c WebSocket.cpp
 
-CircuitStateManager.obj: CircuitStateManager.cpp CircuitStateManager.h Config.h global.h 
+CircuitStateManager.obj: CircuitStateManager.cpp CircuitStateManager.h Config.h PahoWrapper.h global.h 
 	cl $(OPTS) /c CircuitStateManager.cpp
 
 PahoWrapper.obj: PahoWrapper.cpp PahoWrapper.h Config.h global.h
