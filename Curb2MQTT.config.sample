@@ -3,6 +3,12 @@
 #
 LOGFILE=stdout
 #
+# Where is my mqtt server and what should the topic pattern be (will augment circuit name)
+#
+MQTT_SERVER=127.0.0.1
+MQTT_TOPIC_BASE=/curb2mqtt/
+#
+#
 # CURB credentials
 #
 CURB_USERNAME=user@foo.org
