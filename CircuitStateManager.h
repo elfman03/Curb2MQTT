@@ -8,7 +8,7 @@ class CircuitStateManager {
 
 private:
   FILE *logfile;
-  PahoWrapper *mqttWrapper;
+  PahoWrapper *paho;
   const char  *circuitName[8];
   char        *circuitLabel[8];
   int          circuitThreshold[8];
@@ -16,7 +16,7 @@ private:
   int          circuitStateLast[8];
 
 public:
-  CircuitStateManager(Config *config);
+  CircuitStateManager(Config *config, PahoWrapper *thePaho);
   void processDataPacket(const char *payload);
 };
 

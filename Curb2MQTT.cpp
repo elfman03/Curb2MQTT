@@ -5,12 +5,14 @@
 #include "Config.h"
 #include "AuthToken.h"
 #include "WebSocket.h"
+#include "PahoWrapper.h"
 #include "CircuitStateManager.h"
 
 Config *myConfig=new Config();
 AuthToken *myToken=new AuthToken();
 WebSocket *myWS=new WebSocket();
 CircuitStateManager *myStateMan;
+PahoWrapper *myPaho;
 
 DWORD firstTick;
 DWORD continueTick;
@@ -48,6 +50,7 @@ void handleUTF8(const char *payload) {
     //
     // An actual data packet
     //
+    if(packetCountEpoch==0) { myPaho->markAvailable(true); }
     packetCount++;
     packetCountEpoch++;
 #ifdef DEBUG_PRINT_MAIN
@@ -110,7 +113,8 @@ void main() {
   myConfig->readConfig("Curb2MQTT.config");
   logfile=myConfig->getLogfile();
   if(logfile) { fprintf(logfile, "Loaded Config File.  Creating CircuitStateManager\n"); }
-  myStateMan=new CircuitStateManager(myConfig);
+  myPaho=new PahoWrapper(myConfig);
+  myStateMan=new CircuitStateManager(myConfig, myPaho);
 
   //
   // Loop as long as the websocket returns a normal exit condition.  Should be about 2 hours at a go.
@@ -151,29 +155,30 @@ void main() {
       s=frac/(1000);       frac=frac%(1000);
       frac=frac/100;
       fprintf(logfile, "Looper ended with status %d (normal=1000) Epoch %d after epochTime=%d:%02d:%02d.%01d packets=%d\n",status,epochNum,h,m,s,frac,packetCountEpoch);
-      fprintf(logfile, "tick=%ul firstTick=%ul",tick,firstTick);
+      fprintf(logfile, "tick=%ul firstTick=%ul\n",tick,firstTick);
       fflush(logfile); 
     }
 #endif
-    // If we had a normal exit or timeout, wait 3 seconds before iterating
-    if(status==1000) {
-#ifdef DEBUG_PRINT_MAIN
-      if(logfile) { fprintf(logfile, "NORMAL_CLOSURE.  Start over in 3 seconds\n"); }
-#endif
-      Sleep(3000); 
+    char *msg=0;
+    int wait=0;
+    myPaho->markAvailable(false);
+    // If we had an expected exit note it and restart after a bit.
+    if(status==1000) { 
+      wait=3; 
+      msg="NORMAL_CLOSURE.  Start over in 3 minutes"; 
     } else if(status==12002) { 
-#ifdef DEBUG_PRINT_MAIN
-      if(logfile) { fprintf(logfile, "ERROR_WINHTTP_TIMEOUT.  Try again in 5 mins\n"); }
-#endif
+      wait=5; 
+      msg="ERROR_WINHTTP_TIMEOUT.  Try again in 5 mins";
       status=1000;
-      Sleep(30000); 
     } else if(status==12030) { 
-#ifdef DEBUG_PRINT_MAIN
-      if(logfile) { fprintf(logfile, "ERROR_WINHTTP_CONNECTION_ERROR.  Try again in 5 mins\n"); }
-#endif
+      wait=5; 
+      msg="ERROR_WINHTTP_CONNECTION_ERROR.  Try again in 5 mins";
       status=1000;
-      Sleep(30000); 
-    } 
+    }
+#ifdef DEBUG_PRINT_MAIN
+    if(logfile && msg) { fprintf(logfile, "%s\n",msg); }
+#endif
+    Sleep(wait*60*1000); 
   }
   if(logfile) { fflush(logfile); } // should be in Config.cpp destructor?
 }

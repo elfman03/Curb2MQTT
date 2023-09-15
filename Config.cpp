@@ -89,13 +89,13 @@ void Config::readConfig(const char *fname) {
   p=strstr(buf,"MQTT_SERVER=");
   for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
   *q=0;
-  mqttServer=strdup(&p[14]);
+  mqttServer=strdup(&p[12]);
   *q='\n';
 
   p=strstr(buf,"MQTT_TOPIC_BASE=");
   for(q=p;(*q) && (*q!='\r') && (*q!='\n');) { q=q+1; }  // find end of config parameter
   *q=0;
-  mqttTopicBase=strdup(&p[14]);
+  mqttTopicBase=strdup(&p[16]);
   *q='\n';
 
   p=strstr(buf,"CURB_USERNAME=");

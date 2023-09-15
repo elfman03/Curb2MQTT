@@ -6,13 +6,15 @@
 #include "PahoWrapper.h"
 #include "CircuitStateManager.h"
 
-#define UNK -1
-#define OFF  0
-#define ON   1
+#define UNK 0
+#define OFF 1
+#define ON  2
+static const char *circuitMsg[3]={"UNK","OFF","ON"};
 
-CircuitStateManager::CircuitStateManager(Config *config) {
+CircuitStateManager::CircuitStateManager(Config *config, PahoWrapper *thePaho) {
   int i;
 
+  paho=thePaho;
   logfile=config->getLogfile();
   for(i=0;i<8;i++) {
     const char *n=config->getCircuitName(i);
@@ -32,7 +34,6 @@ CircuitStateManager::CircuitStateManager(Config *config) {
 #endif
     }
   }
-  mqttWrapper=new PahoWrapper(config);
 }
 
 void CircuitStateManager::processDataPacket(const char *payload) {
@@ -62,13 +63,15 @@ void CircuitStateManager::processDataPacket(const char *payload) {
             //
             if(watt<circuitThreshold[i]) { circuitState[i]=ON; } else { circuitState[i]=OFF; }
           }
-#ifdef DEBUG_PRINT_CSTATE
           if(circuitStateLast[i]!=circuitState[i]) {
-            if(logfile) { fprintf(logfile,"Circuit %2d -> %2d : Watts=%6d -- %s\n",
-                                  circuitStateLast[i], circuitState[i], watt, circuitName[i]); }
+#ifdef DEBUG_PRINT_CSTATE
+            if(logfile) { fprintf(logfile,"Circuit %3s -> %3s : Watts=%6d -- %s\n",
+                                  circuitMsg[circuitStateLast[i]], circuitMsg[circuitState[i]], 
+                                  watt, circuitName[i]); }
+#endif
+            paho->writeToMQTT(i, circuitMsg[circuitState[i]]);
           }
           //if(logfile) { fprintf(logfile,"%s: %d\n",circuitName[i],watt); }
-#endif
         } else {
           fprintf(stderr,"ERROR: could not find \"w\": for %s in payload %s\n",circuitName[i],payload);
         }
