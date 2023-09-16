@@ -72,7 +72,8 @@ void handleUTF8(const char *payload) {
         m=frac/(1000*60);    frac=frac%(1000*60);
         s=frac/(1000);       frac=frac%(1000);
         frac=frac/100;
-        fprintf(logfile, "DataPayloads: packetCount(60s)=%d packetCount(epoch)=%d epoch=%d epochTime=%d:%02d:%02d.%01d\n",packetCount,packetCountEpoch,epochNum,h,m,s,frac);
+        int outstand=myPaho->getOutstanding();
+        fprintf(logfile, "Stats: packetCount(60s)=%d packetCount(epoch)=%d epoch=%d epochTime=%d:%02d:%02d.%01d mqttOutstanding=%d\n",packetCount,packetCountEpoch,epochNum,h,m,s,frac,outstand);
         fflush(logfile); 
       }
 #endif

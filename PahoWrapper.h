@@ -12,12 +12,14 @@ private:
   const char *mqttServer;
   char *topicState[8];
   char *topicAvailability[8];
+  LONG volatile pahoOutstanding;
   //
   void pahoSetup();
   void pahoSend(const char *topic, const char *msg);
 
 public:
   PahoWrapper(Config *config);
+  LONG getOutstanding();
   void markAvailable(bool avail);
   void writeState(int circuit, const char *msg);
 

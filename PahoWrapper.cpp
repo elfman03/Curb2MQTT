@@ -17,7 +17,10 @@ extern "C" {
   static void _pahoOnSend(void* context, MQTTAsync_successData* response)           { ((PahoWrapper*)(context))->pahoOnSend(response);           }
 }
 
+LONG PahoWrapper::getOutstanding() { return pahoOutstanding; }
+
 PahoWrapper::PahoWrapper(Config *config) {
+  pahoOutstanding=0;
   logfile=config->getLogfile();
   mqttServer=config->getMqttServer();
   pahoSetup();
@@ -78,6 +81,7 @@ void PahoWrapper::pahoSend(const char *topic, const char *msg) {
   pubmsg.payloadlen = strlen(msg);
   pubmsg.qos = 1;
   pubmsg.retained = 0;
+  InterlockedIncrement(&pahoOutstanding);
   if ((rc = MQTTAsync_sendMessage(pahoClient, topic, &pubmsg, &opts)) != MQTTASYNC_SUCCESS) {
     fprintf(stderr,"PAHO_ERROR - Failed to start sendMessage, return code %d\n", rc);
 #ifdef DEBUG_PRINT_MQTT
@@ -148,10 +152,17 @@ void PahoWrapper::pahoOnConnect(MQTTAsync_successData* response) {
 
 void PahoWrapper::pahoOnSend(MQTTAsync_successData* response)
 {
+  InterlockedDecrement(&pahoOutstanding);
+  if(pahoOutstanding>16) {
+    fprintf(stderr,"PAHO_ERROR - Outstanding Paho MQTT messages is high: %d\n", pahoOutstanding);
 #ifdef DEBUG_PRINT_MQTT
-  if(logfile) {
-    fprintf(logfile,"PAHO - onSend complete\n");
+    if(logfile && logfile!=stderr) {
+      fprintf(logfile,"PAHO_WARNING - Outstanding Paho MQTT messages is high: %d\n", pahoOutstanding);
+    }
+#endif
   }
+#ifdef DEBUG_PRINT_MQTT
+  //if(logfile) { fprintf(logfile,"PAHO - onSend complete outstanding=%d\n",pahoOutstanding); }
 #endif
 }
 
