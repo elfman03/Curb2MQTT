@@ -69,7 +69,7 @@ void CircuitStateManager::processDataPacket(const char *payload) {
                                   circuitMsg[circuitStateLast[i]], circuitMsg[circuitState[i]], 
                                   watt, circuitName[i]); }
 #endif
-            paho->writeToMQTT(i, circuitMsg[circuitState[i]]);
+            paho->writeState(i, circuitMsg[circuitState[i]]);
           }
           //if(logfile) { fprintf(logfile,"%s: %d\n",circuitName[i],watt); }
         } else {

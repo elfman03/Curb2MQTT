@@ -5,7 +5,7 @@ PAHO_I=../paho.mqtt.c/src
 PAHO_L=../paho.mqtt.c/src/Release/paho-mqtt3a.lib
 
 Curb2MQTT.exe: Curb2MQTT.cpp $(OBJS)
-	cl $(OPTS) Curb2MQTT.cpp /link $(OBJS) WinHttp.lib $(PAHO_L)
+	cl $(OPTS) /I $(PAHO_I) Curb2MQTT.cpp /link $(OBJS) WinHttp.lib $(PAHO_L)
 
 Config.obj: Config.cpp Config.h global.h
 	cl $(OPTS) /c Config.cpp
@@ -17,7 +17,7 @@ WebSocket.obj: WebSocket.cpp WebSocket.h global.h
 	cl $(OPTS) /c WebSocket.cpp
 
 CircuitStateManager.obj: CircuitStateManager.cpp CircuitStateManager.h Config.h PahoWrapper.h global.h 
-	cl $(OPTS) /c CircuitStateManager.cpp
+	cl $(OPTS) /I $(PAHO_I) /c CircuitStateManager.cpp
 
 PahoWrapper.obj: PahoWrapper.cpp PahoWrapper.h Config.h global.h
 	cl $(OPTS) /I $(PAHO_I) /c PahoWrapper.cpp
