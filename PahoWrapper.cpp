@@ -7,19 +7,20 @@
 #include "PahoWrapper.h"
 
 extern "C" {
-
-  static void _pahoOnConnLost(void *context, char *cause);
-  static void _pahoOnConnectFailure(void* context, MQTTAsync_failureData* response);
-  static void _pahoOnConnect(void* context, MQTTAsync_successData* response);
-  static void _pahoOnSend(void* context, MQTTAsync_successData* response);
-  static void _pahoOnSendFailure(void* context, MQTTAsync_failureData* response);
-
+  //
+  // Paho C bridging back to C++
+  //
+  static void _pahoOnConnLost(void *context, char *cause)                           { ((PahoWrapper*)(context))->pahoOnConnLost(cause);          }
+  static void _pahoOnConnectFailure(void* context, MQTTAsync_failureData* response) { ((PahoWrapper*)(context))->pahoOnConnectFailure(response); }
+  static void _pahoOnSendFailure(void* context, MQTTAsync_failureData* response)    { ((PahoWrapper*)(context))->pahoOnSendFailure(response);    }
+  static void _pahoOnConnect(void* context, MQTTAsync_successData* response)        { ((PahoWrapper*)(context))->pahoOnConnect(response);        }
+  static void _pahoOnSend(void* context, MQTTAsync_successData* response)           { ((PahoWrapper*)(context))->pahoOnSend(response);           }
 }
 
 PahoWrapper::PahoWrapper(Config *config) {
   logfile=config->getLogfile();
   mqttServer=config->getMqttServer();
-  mqttSetup();
+  pahoSetup();
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) { fprintf(logfile,"MQTT Server: %s\n",mqttServer); }
 #endif
@@ -45,13 +46,28 @@ PahoWrapper::PahoWrapper(Config *config) {
   }
 }
 
-void PahoWrapper::sendToPaho(const char *topic, const char *msg) {
+void PahoWrapper::writeState(int circuit, const char *msg) {
+  pahoSend(topicState[circuit], msg);
+}
+
+void PahoWrapper::markAvailable(bool avail) {
+  int i;
+  for(i=0;i<8;i++) {
+    if(topicAvailability[i]) {
+      pahoSend(topicAvailability[i], avail?"Online":"Offline");
+    }
+  }
+}
+
+void PahoWrapper::pahoSend(const char *topic, const char *msg) {
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) { 
-    fprintf(logfile,"Writing message '%s' to topic '%s'\n",msg, topic); 
+    fprintf(logfile,"PAHO - Writing message '%s' to topic '%s'\n",msg, topic); 
   }
 #endif
-
+  //
+  // https://eclipse.dev/paho/files/mqttdoc/MQTTAsync/html/publish.html
+  //
   MQTTAsync_responseOptions opts = MQTTAsync_responseOptions_initializer;
   MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
   int rc;
@@ -72,22 +88,12 @@ void PahoWrapper::sendToPaho(const char *topic, const char *msg) {
   }
 }
 
-void PahoWrapper::writeState(int circuit, const char *msg) {
-  sendToPaho(topicState[circuit], msg);
-}
-
-void PahoWrapper::markAvailable(bool avail) {
-  int i;
-  for(i=0;i<8;i++) {
-    if(topicAvailability[i]) {
-      sendToPaho(topicAvailability[i], avail?"Online":"Offline");
-    }
-  }
-}
-
-void PahoWrapper::mqttSetup() {
+void PahoWrapper::pahoSetup() {
   MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
   int rc;
+  //
+  // https://eclipse.dev/paho/files/mqttdoc/MQTTAsync/html/publish.html
+  //
   MQTTAsync_create(&pahoClient, mqttServer, "Curb2MQTT/1.0", MQTTCLIENT_PERSISTENCE_NONE, NULL);
   MQTTAsync_setCallbacks(pahoClient, NULL, _pahoOnConnLost, NULL, NULL);
   conn_opts.keepAliveInterval = 20;
@@ -105,9 +111,6 @@ void PahoWrapper::mqttSetup() {
   }
 }
 
-//
-// https://eclipse.dev/paho/files/mqttdoc/MQTTAsync/html/publish.html
-//
 void PahoWrapper::pahoOnConnLost(char *cause) {
   fprintf(stderr,"PAHO_ERROR - Connection Lost - cause %s\n", cause);
 #ifdef DEBUG_PRINT_MQTT
@@ -152,26 +155,4 @@ void PahoWrapper::pahoOnSend(MQTTAsync_successData* response)
 #endif
 }
 
-//
-// https://eclipse.dev/paho/files/mqttdoc/MQTTAsync/html/publish.html
-//
-static void _pahoOnConnLost(void *context, char *cause) {
-  ((PahoWrapper*)(context))->pahoOnConnLost(cause);
-}
-
-static void _pahoOnConnectFailure(void* context, MQTTAsync_failureData* response) {
-  ((PahoWrapper*)(context))->pahoOnConnectFailure(response);
-}
-
-static void _pahoOnSendFailure(void* context, MQTTAsync_failureData* response) {
-  ((PahoWrapper*)(context))->pahoOnSendFailure(response);
-}
-
-static void _pahoOnConnect(void* context, MQTTAsync_successData* response) {
-  ((PahoWrapper*)(context))->pahoOnConnect(response);
-}
-
-static void _pahoOnSend(void* context, MQTTAsync_successData* response) {
-  ((PahoWrapper*)(context))->pahoOnSend(response);
-}
 

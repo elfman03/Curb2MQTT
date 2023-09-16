@@ -12,9 +12,9 @@ private:
   const char *mqttServer;
   char *topicState[8];
   char *topicAvailability[8];
-  void sendToPaho(const char *topic, const char *msg);
   //
-  void mqttSetup();
+  void pahoSetup();
+  void pahoSend(const char *topic, const char *msg);
 
 public:
   PahoWrapper(Config *config);
