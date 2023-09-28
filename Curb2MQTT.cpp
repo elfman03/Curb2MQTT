@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <winhttp.h>
+#include <time.h>
 #include <stdio.h>
 #include "global.h"
 #include "Config.h"
@@ -129,7 +130,12 @@ void main() {
     // Fetch Access Token
     //
 #ifdef DEBUG_PRINT_MAIN
-    if(logfile) { fprintf(logfile, "Retrieving Curb Access Token\n"); }
+    if(logfile) { 
+      time_t clock;
+      time(&clock);
+      fprintf(logfile,"Epoch %d begins: %s\n", epochNum, asctime(localtime(&clock)));
+      fprintf(logfile, "Retrieving Curb Access Token\n"); 
+   }
 #endif
     const char *c=myToken->getAuthToken(myConfig, true);
     //
@@ -170,6 +176,10 @@ void main() {
     } else if(status==12002) { 
       wait=5; 
       msg="ERROR_WINHTTP_TIMEOUT.  Try again in 5 mins";
+      status=1000;
+    } else if(status==12007) { 
+      wait=5; 
+      msg="ERROR_WINHTTP_NAME_NOT_RESOLVED.  Try again in 5 mins";
       status=1000;
     } else if(status==12030) { 
       wait=5; 
