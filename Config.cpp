@@ -82,6 +82,19 @@ void Config::readConfig(const char *fname) {
     } else if(!strcmp(logfileName,"stdout")) {
       logfile=stdout;
     } else {
+      //
+      //  Cycle the old log files
+      //
+      char from[1024], to[1024];
+      for(i=8;i>=0;i--) {
+        if(i) { sprintf(from,"%s.%d",logfileName,i); } else { sprintf(from,"%s",logfileName); }
+        sprintf(to,"%s.%d",logfileName,i+1);
+        remove(to);
+        rename(from,to);
+      }
+      //
+      // open the new log file
+      //
       logfile=fopen(logfileName,"w");
     }
   }
