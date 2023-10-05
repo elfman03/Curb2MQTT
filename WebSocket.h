@@ -14,7 +14,7 @@ private:
 public:
   WebSocket();
   int createWebSocket(LPCWSTR agent, LPCWSTR host, LPCWSTR path, FILE *logfile);
-  int looper(void(*UTFhandler)(const char *));   // receive stuff, return close status
+  int looper(int(*UTFhandler)(const char *));   // receive stuff, return close status
   void postUTF8(const char *);                   // post message to websocket
 };
 

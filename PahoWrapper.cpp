@@ -18,12 +18,15 @@ extern "C" {
 }
 
 LONG PahoWrapper::getOutstanding() { return pahoOutstanding; }
+bool PahoWrapper::isUp()           { return pahoUp;          }
 
 PahoWrapper::PahoWrapper(Config *config) {
+  pahoClient=0;
   pahoOutstanding=0;
+  pahoUp=false;
   logfile=config->getLogfile();
   mqttServer=config->getMqttServer();
-  pahoSetup();
+  reconnect();
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) { fprintf(logfile,"MQTT Server: %s\n",mqttServer); }
 #endif
@@ -50,19 +53,19 @@ PahoWrapper::PahoWrapper(Config *config) {
 }
 
 void PahoWrapper::writeState(int circuit, const char *msg) {
-  pahoSend(topicState[circuit], msg);
+  send(topicState[circuit], msg);
 }
 
 void PahoWrapper::markAvailable(bool avail) {
   int i;
   for(i=0;i<8;i++) {
     if(topicAvailability[i]) {
-      pahoSend(topicAvailability[i], avail?"Online":"Offline");
+      send(topicAvailability[i], avail?"Online":"Offline");
     }
   }
 }
 
-void PahoWrapper::pahoSend(const char *topic, const char *msg) {
+void PahoWrapper::send(const char *topic, const char *msg) {
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) { 
     fprintf(logfile,"PAHO - Writing message '%s' to topic '%s'\n",msg, topic); 
@@ -83,21 +86,26 @@ void PahoWrapper::pahoSend(const char *topic, const char *msg) {
   pubmsg.retained = 0;
   InterlockedIncrement(&pahoOutstanding);
   if ((rc = MQTTAsync_sendMessage(pahoClient, topic, &pubmsg, &opts)) != MQTTASYNC_SUCCESS) {
-    fprintf(stderr,"PAHO_ERROR - Failed to start sendMessage, return code %d\n", rc);
+    fprintf(stderr,"PAHO_ERROR - Failed to start sendMessage, return code %d (%s : %s)\n", rc,topic,msg);
 #ifdef DEBUG_PRINT_MQTT
     if(logfile && logfile!=stderr) {
-      fprintf(logfile,"PAHO_ERROR - Failed to start sendMessage, return code %d\n", rc);
+      fprintf(logfile,"PAHO_ERROR - Failed to start sendMessage, return code %d (%s: %s)\n", rc,topic,msg);
     }
 #endif
   }
 }
 
-void PahoWrapper::pahoSetup() {
+void PahoWrapper::reconnect() {
   MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
   int rc;
   //
   // https://eclipse.dev/paho/files/mqttdoc/MQTTAsync/html/publish.html
   //
+  if(pahoClient) { 
+    MQTTAsync_destroy(&pahoClient); 
+    pahoClient=0; 
+    Sleep(1000); 
+  }
   MQTTAsync_create(&pahoClient, mqttServer, "Curb2MQTT/1.0", MQTTCLIENT_PERSISTENCE_NONE, NULL);
   MQTTAsync_setCallbacks(pahoClient, NULL, _pahoOnConnLost, NULL, NULL);
   conn_opts.keepAliveInterval = 20;
@@ -105,7 +113,17 @@ void PahoWrapper::pahoSetup() {
   conn_opts.onSuccess = _pahoOnConnect;
   conn_opts.onFailure = _pahoOnConnectFailure;
   conn_opts.context = (void*)this;
-  if ((rc = MQTTAsync_connect(pahoClient, &conn_opts)) != MQTTASYNC_SUCCESS) {
+  pahoUp=false;
+  if ((rc = MQTTAsync_connect(pahoClient, &conn_opts)) == MQTTASYNC_SUCCESS) {
+    for(int i=0;i<5;i++) {
+      if(!pahoUp) { 
+        Sleep(1000); 
+#ifdef DEBUG_PRINT_MQTT
+    if(logfile) { fprintf(logfile, "PAHO - Waiting for connection... %d/5\n", i+1); }
+#endif
+      }
+    }
+  } else {
     fprintf(stderr, "PAHO_ERROR - Failed to start connect, return code %d\n", rc);
 #ifdef DEBUG_PRINT_MQTT
     if(logfile && logfile!=stderr) {
@@ -113,9 +131,18 @@ void PahoWrapper::pahoSetup() {
     }
 #endif
   }
+  if(!pahoUp) {
+    fprintf(stderr, "PAHO_ERROR - Paho did not connect correctly after 5 seconds...\n", rc);
+#ifdef DEBUG_PRINT_MQTT
+    if(logfile && logfile!=stderr) {
+      fprintf(logfile, "PAHO_ERROR - Paho did not connect correctly after 5 seconds...\n", rc);
+    }
+#endif
+  }
 }
 
 void PahoWrapper::pahoOnConnLost(char *cause) {
+  pahoUp=false;
   fprintf(stderr,"PAHO_ERROR - Connection Lost - cause %s\n", cause);
 #ifdef DEBUG_PRINT_MQTT
     if(logfile && logfile!=stderr) {
@@ -125,6 +152,7 @@ void PahoWrapper::pahoOnConnLost(char *cause) {
 }
 
 void PahoWrapper::pahoOnConnectFailure(MQTTAsync_failureData* response) {
+  pahoUp=false;
   fprintf(stderr,"PAHO_ERROR - Connect failed, rc %d\n", response ? response->code : 0);
 #ifdef DEBUG_PRINT_MQTT
     if(logfile && logfile!=stderr) {
@@ -134,6 +162,7 @@ void PahoWrapper::pahoOnConnectFailure(MQTTAsync_failureData* response) {
 }
 
 void PahoWrapper::pahoOnSendFailure(MQTTAsync_failureData* response) {
+  pahoUp=false;
   fprintf(stderr,"PAHO_ERROR - Send failed, rc %d\n", response ? response->code : 0);
 #ifdef DEBUG_PRINT_MQTT
     if(logfile && logfile!=stderr) {
@@ -143,6 +172,7 @@ void PahoWrapper::pahoOnSendFailure(MQTTAsync_failureData* response) {
 }
 
 void PahoWrapper::pahoOnConnect(MQTTAsync_successData* response) {
+  pahoUp=true;
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) {
     fprintf(logfile,"PAHO - onConnect complete\n");
@@ -154,6 +184,7 @@ void PahoWrapper::pahoOnSend(MQTTAsync_successData* response)
 {
   InterlockedDecrement(&pahoOutstanding);
   if(pahoOutstanding>16) {
+    pahoUp=false;
     fprintf(stderr,"PAHO_ERROR - Outstanding Paho MQTT messages is high: %d\n", pahoOutstanding);
 #ifdef DEBUG_PRINT_MQTT
     if(logfile && logfile!=stderr) {

@@ -18,6 +18,7 @@ private:
 public:
   CircuitStateManager(Config *config, PahoWrapper *thePaho);
   void processDataPacket(const char *payload);
+  void unkState();
 };
 
 #endif

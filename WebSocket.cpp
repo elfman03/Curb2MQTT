@@ -173,7 +173,7 @@ void WebSocket::postUTF8(const char *outbuf) {
   return;
 }
 
-int WebSocket::looper(void(*UTFhandler)(const char *)) {
+int WebSocket::looper(int(*UTFhandler)(const char *)) {
   DWORD ret;
   char buf[8192];
   char *bufp=buf;
@@ -200,7 +200,13 @@ int WebSocket::looper(void(*UTFhandler)(const char *)) {
 #ifdef DEBUG_PRINT_WEBSOCKET
         //if(logfile) { fprintf(logfile, "WEBSOCKET: Received UTF8 Message -- %d bytes\n",incoming); }
 #endif
-        UTFhandler(buf);
+        ret=UTFhandler(buf);
+        if(ret) {
+          fprintf(stderr, "UTFhandler returned nonzero ret=%d",ret);
+          if(logfile && logfile!=stderr) { fprintf(logfile, "UTFhandler returned nonzero ret=%d (paho death=711711)\n",ret); }
+          ensureClosed();
+          return ret;
+        }
       } else if(bType==WINHTTP_WEB_SOCKET_UTF8_FRAGMENT_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT_WEBSOCKET
         if(logfile) { fprintf(logfile, "WEBSOCKET: Received UTF8 Fragment -- %d bytes\n",incoming); }

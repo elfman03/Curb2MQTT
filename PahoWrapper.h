@@ -13,15 +13,18 @@ private:
   char *topicState[8];
   char *topicAvailability[8];
   LONG volatile pahoOutstanding;
+  bool volatile pahoUp;
+  
   //
-  void pahoSetup();
-  void pahoSend(const char *topic, const char *msg);
+  void send(const char *topic, const char *msg);
 
 public:
   PahoWrapper(Config *config);
   LONG getOutstanding();
+  bool isUp();
   void markAvailable(bool avail);
   void writeState(int circuit, const char *msg);
+  void reconnect();
 
   void pahoOnConnLost(char *cause);
   void pahoOnConnectFailure(MQTTAsync_failureData* response);

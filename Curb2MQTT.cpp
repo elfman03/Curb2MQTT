@@ -36,9 +36,9 @@ int packetCountEpoch;
 // See https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
 // Handle incoming websocket payload from Curb
 //
-void handleUTF8(const char *payload) {
+int handleUTF8(const char *payload) {
   char outbuf[1024];
-  DWORD ret;
+  int ret=0;
 
   DWORD tick=GetTickCount();
   if(!firstTick) { firstTick=tick; continueTick=tick+60000; }
@@ -104,6 +104,9 @@ void handleUTF8(const char *payload) {
     if(logfile) { fprintf(logfile, "UNHANDLED PAYLOAD: %s\n",payload); }
 #endif
   }
+  
+  if(!myPaho->isUp()) { ret=711711; }
+  return ret;
 }
 
 void main() {
@@ -117,12 +120,17 @@ void main() {
   if(logfile) { fprintf(logfile, "Loaded Config File.  Creating CircuitStateManager\n"); }
   myPaho=new PahoWrapper(myConfig);
   myStateMan=new CircuitStateManager(myConfig, myPaho);
+  myPaho->markAvailable(false);
 
   //
   // Loop as long as the websocket returns a normal exit condition.  Should be about 2 hours at a go.
   //
   for(status=1000;status==1000;) {
     //
+    // If Paho connection is down, reconnect it.
+    //
+    if(!myPaho->isUp()) { myPaho->reconnect(); }
+
     firstTick=continueTick=0;
     epochNum++;
     packetCount=packetCountEpoch=0;
@@ -168,7 +176,12 @@ void main() {
 #endif
     char *msg=0;
     int wait=0;
+    //
+    // mark to MQTT server that we are offline and mark locally that device states are unknown to resend when we come back
+    //
     myPaho->markAvailable(false);
+    myStateMan->unkState();
+
     // If we had an expected exit note it and restart after a bit.
     if(status==1000) { 
       wait=3; 
@@ -184,6 +197,10 @@ void main() {
     } else if(status==12030) { 
       wait=5; 
       msg="ERROR_WINHTTP_CONNECTION_ERROR.  Try again in 5 mins";
+      status=1000;
+    } else if(status==711711) {
+      wait=1; 
+      msg="ERROR_PAHO_DOWN.  Try again in 1 min";
       status=1000;
     }
 #ifdef DEBUG_PRINT_MAIN

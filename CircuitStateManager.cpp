@@ -36,6 +36,15 @@ CircuitStateManager::CircuitStateManager(Config *config, PahoWrapper *thePaho) {
   }
 }
 
+void CircuitStateManager::unkState() {
+#ifdef DEBUG_PRINT_CSTATE
+  if(logfile) { fprintf(logfile,"Circuit 0-7: marking state unknown\n"); }
+#endif
+  for(int i=0;i<8;i++) {
+    circuitState[i]=circuitStateLast[i]=UNK;
+  }
+}
+
 void CircuitStateManager::processDataPacket(const char *payload) {
   int i,watt;
   const char *p,*q;
