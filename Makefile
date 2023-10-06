@@ -1,3 +1,8 @@
+##
+## Copyright (C) 2023, Chris Elford
+## 
+## SPDX-License-Identifier: MIT
+##
 
 OPTS=/MD /EHsc 
 OBJS=Config.obj AuthToken.obj WebSocket.obj CircuitStateManager.obj PahoWrapper.obj
