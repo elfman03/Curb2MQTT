@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2023, Chris Elford
+ * 
+ * SPDX-License-Identifier: MIT
+ *
+ */
+
 #include <windows.h>
 #include <stdio.h>
 #include "global.h"

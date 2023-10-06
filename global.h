@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2023, Chris Elford
+ * 
+ * SPDX-License-Identifier: MIT
+ *
+ */
+
 #ifndef GLOBALH
 #define GLOBALH 1
 

@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2023, Chris Elford
+ * 
+ * SPDX-License-Identifier: MIT
+ *
+ */
+
 #include <windows.h>
 #include <winhttp.h>
 #include <time.h>

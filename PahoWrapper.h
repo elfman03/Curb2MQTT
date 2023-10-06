@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2023, Chris Elford
+ * 
+ * SPDX-License-Identifier: MIT
+ *
+ */
+
 #ifndef _PAHOWRAPPER
 #define _PAHOWRAPPER
 #include <MQTTAsync.h>
