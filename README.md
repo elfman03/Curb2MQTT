@@ -21,7 +21,7 @@ Platform: Windows
 
 Dependencies:
   * Curb v2 API 3rd party integration
-   * https://github.com/Curb-v2/third-party-app-integration
+  ** https://github.com/Curb-v2/third-party-app-integration
    * API key and details at https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
   * Microsoft Visual Studio 
    * I use 2022 Community edition x64 developer prompt 
