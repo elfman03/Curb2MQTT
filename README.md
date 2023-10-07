@@ -21,14 +21,14 @@ Platform: Windows
 
 Dependencies:
   * Curb v2 API 3rd party integration
-  ** https://github.com/Curb-v2/third-party-app-integration
-   * API key and details at https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
+    * https://github.com/Curb-v2/third-party-app-integration
+    * API key and details at https://github.com/Curb-v2/third-party-app-integration/blob/master/docs/api.md
   * Microsoft Visual Studio 
-   * I use 2022 Community edition x64 developer prompt 
-   * C:\Windows\System32\cmd.exe /k "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
+    * I use 2022 Community edition x64 developer prompt 
+    * C:\Windows\System32\cmd.exe /k "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
   * Paho Asynchronous Client library - C edition
-   * https://github.com/eclipse/paho.mqtt.c
-   * Place PAHO header\lib in ..\paho.mqtt.c
-   * Dependency: paho-mqtt3a.dll (place in directory with Curb2MQTT.exe)
-   * I built paho.mqtt.c from source but you may be able to use the prebuilts at https://github.com/eclipse/paho.mqtt.c/releases
+    * https://github.com/eclipse/paho.mqtt.c
+    * Place PAHO header\lib in ..\paho.mqtt.c
+    * Dependency: paho-mqtt3a.dll (place in directory with Curb2MQTT.exe)
+    * I built paho.mqtt.c from source but you may be able to use the prebuilts at https://github.com/eclipse/paho.mqtt.c/releases
    
