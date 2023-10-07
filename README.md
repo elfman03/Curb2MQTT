@@ -2,9 +2,11 @@
 Extract data from Curb power monitoring and selectively post to MQTT
 This is experimental integration.
 
-Data goes from Curb monitoring box up to cloud then streams back down to client app via websocket interface which then posts relevant information to MQTT.  No documented local way to fetch the stream without the cloud.
+Data goes from Curb monitoring box up to cloud (https://www.poweredbyelevation.com/curb-energy-monitoring) then streams back down to client app via websocket interface which then posts relevant information to MQTT.  No documented local way to fetch the stream without the cloud.
 
 Usage: Curb2MQTT.exe
+
+For my own use, I plan to wrap it in a NSSM service wrapper (https://nssm.cc/)
 
 Config: Create a file called Curb2MQTT.config  (see Curb2MQTT.config.sample)
   * MQTT_SERVER         = IP address of your MQTT server
