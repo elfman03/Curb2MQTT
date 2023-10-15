@@ -93,6 +93,7 @@ void PahoWrapper::send(const char *topic, const char *msg) {
   pubmsg.retained = 0;
   InterlockedIncrement(&pahoOutstanding);
   if ((rc = MQTTAsync_sendMessage(pahoClient, topic, &pubmsg, &opts)) != MQTTASYNC_SUCCESS) {
+    pahoUp=false;
     fprintf(stderr,"PAHO_ERROR - Failed to start sendMessage, return code %d (%s : %s)\n", rc,topic,msg);
 #ifdef DEBUG_PRINT_MQTT
     if(logfile && logfile!=stderr) {
