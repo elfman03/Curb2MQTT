@@ -24,6 +24,7 @@ PahoWrapper *myPaho;
 
 DWORD firstTick;
 DWORD continueTick;
+DWORD availabilityTick;
 FILE *logfile;
 int epochNum=0;
 int packetCount;
@@ -48,7 +49,7 @@ int handleUTF8(const char *payload) {
   int ret=0;
 
   DWORD tick=GetTickCount();
-  if(!firstTick) { firstTick=tick; continueTick=tick+60000; }
+  if(!firstTick) { firstTick=tick; continueTick=tick+60000; availabilityTick=tick+(15*60*60000); }
 
   if(payload[0]=='4' && payload[1]=='2' && payload[2]=='/' && payload[22]=='d' && payload[23]=='a') {
     // Short circuit for 42/api/circuit-data,["data",
@@ -58,7 +59,12 @@ int handleUTF8(const char *payload) {
     //
     // An actual data packet
     //
-    if(packetCountEpoch==0) { myPaho->markAvailable(true); }
+    // If its the first packet of the Epoch or its been 15 hours in the epoch, freshen the availability
+    //
+    if((packetCountEpoch==0) || (tick>availabilityTick)) {
+      availabilityTick=tick+(15*60*60000);
+      myPaho->markAvailable(true);
+    }
     packetCount++;
     packetCountEpoch++;
 #ifdef DEBUG_PRINT_MAIN
@@ -112,7 +118,10 @@ int handleUTF8(const char *payload) {
 #endif
   }
   
+  // If PAHO has gone down return 711711
+  //
   if(!myPaho->isUp()) { ret=711711; }
+
   return ret;
 }
 
@@ -138,7 +147,7 @@ void main() {
     //
     if(!myPaho->isUp()) { myPaho->reconnect(); }
 
-    firstTick=continueTick=0;
+    firstTick=continueTick=availabilityTick=0;
     epochNum++;
     packetCount=packetCountEpoch=0;
     //
