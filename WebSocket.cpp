@@ -209,7 +209,7 @@ int WebSocket::looper(int(*UTFhandler)(const char *)) {
 #endif
         ret=UTFhandler(buf);
         if(ret) {
-          fprintf(stderr, "UTFhandler returned nonzero ret=%d",ret);
+          fprintf(stderr, "UTFhandler returned nonzero ret=%d\n",ret);
           if(logfile && logfile!=stderr) { fprintf(logfile, "UTFhandler returned nonzero ret=%d (paho death=711711)\n",ret); }
           ensureClosed();
           return ret;
