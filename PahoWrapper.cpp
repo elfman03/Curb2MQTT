@@ -180,6 +180,7 @@ void PahoWrapper::pahoOnSendFailure(MQTTAsync_failureData* response) {
 }
 
 void PahoWrapper::pahoOnConnect(MQTTAsync_successData* response) {
+  pahoOutstanding=0;
   pahoUp=true;
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) {
