@@ -33,49 +33,59 @@ PahoWrapper::PahoWrapper(Config *config) {
   pahoUp=false;
   logfile=config->getLogfile();
   mqttServer=config->getMqttServer();
-  reconnect();
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) { fprintf(logfile,"MQTT Server: %s\n",mqttServer); }
 #endif
+
+  //
+  // Load enough config info to know the LWT
+  //
   const char *base=config->getMqttTopicBase();
+  topicLWT=(char*)malloc(strlen(base)+20);
+  sprintf(topicLWT,"%s/LWT",base);
+#ifdef DEBUG_PRINT_MQTT
+  if(logfile) { fprintf(logfile,"LWT=%s\n",topicLWT); }
+#endif
+
+  //
+  // connect
+  //
+  reconnect();
+  //
   for(int i=0;i<8;i++) {
     const char *name=config->getCircuitName(i);
     //
     if(name) {
       topicState[i]=(char*)malloc(strlen(base)+strlen(name)+20);
-      sprintf(topicState[i],"%s%s/state",base,name);
-      //
-      topicAvailability[i]=(char*)malloc(strlen(base)+strlen(name)+20);
-      sprintf(topicAvailability[i],"%s%s/availability",base,name);
+      sprintf(topicState[i],"%s/%s/state",base,name);
 #ifdef DEBUG_PRINT_MQTT
       if(logfile) {
-        fprintf(logfile,"Circuit(%d): %s state=%s availability=%s\n",i,name,topicState[i],topicAvailability[i]);
+        fprintf(logfile,"Circuit(%d): %s state=%s ",i,name,topicState[i]);
       }
 #endif
     } else {
       topicState[i]=0;
-      topicAvailability[i]=0;
     }
   }
 }
 
 void PahoWrapper::writeState(int circuit, const char *msg) {
-  send(topicState[circuit], msg);
+  send(topicState[circuit], 0, msg);
 }
 
 void PahoWrapper::markAvailable(bool avail) {
-  int i;
-  for(i=0;i<8;i++) {
-    if(topicAvailability[i]) {
-      send(topicAvailability[i], avail?"Online":"Offline");
-    }
+  if(avail) {
+    send(topicLWT, 1, "Online");
+  } else {
+    send(topicLWT, 1, "Offline");
   }
 }
 
-void PahoWrapper::send(const char *topic, const char *msg) {
+void PahoWrapper::send(const char *topic, int retain, const char *msg) {
 #ifdef DEBUG_PRINT_MQTT
   if(logfile) { 
-    fprintf(logfile,"PAHO - Writing message '%s' to topic '%s'\n",msg, topic); 
+    fprintf(logfile,"PAHO - Writing retain=%d message '%s' to topic '%s'\n",retain, msg, topic); 
+    fflush(logfile);
   }
 #endif
   //
@@ -90,7 +100,7 @@ void PahoWrapper::send(const char *topic, const char *msg) {
   pubmsg.payload = (void*)msg;
   pubmsg.payloadlen = strlen(msg);
   pubmsg.qos = 1;
-  pubmsg.retained = 0;
+  pubmsg.retained = retain;
   InterlockedIncrement(&pahoOutstanding);
   if ((rc = MQTTAsync_sendMessage(pahoClient, topic, &pubmsg, &opts)) != MQTTASYNC_SUCCESS) {
     pahoUp=false;
@@ -105,6 +115,7 @@ void PahoWrapper::send(const char *topic, const char *msg) {
 
 void PahoWrapper::reconnect() {
   MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
+  MQTTAsync_willOptions will_opts= MQTTAsync_willOptions_initializer;
   int rc;
   //
   // https://eclipse.dev/paho/files/mqttdoc/MQTTAsync/html/publish.html
@@ -121,6 +132,11 @@ void PahoWrapper::reconnect() {
   conn_opts.onSuccess = _pahoOnConnect;
   conn_opts.onFailure = _pahoOnConnectFailure;
   conn_opts.context = (void*)this;
+  will_opts.topicName=topicLWT;
+  will_opts.message="Offline";
+  will_opts.qos=1;
+  will_opts.retained=1;
+  conn_opts.will = &will_opts;
   pahoUp=false;
   if ((rc = MQTTAsync_connect(pahoClient, &conn_opts)) == MQTTASYNC_SUCCESS) {
     for(int i=0;i<5;i++) {
