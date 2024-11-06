@@ -57,7 +57,7 @@ PahoWrapper::PahoWrapper(Config *config) {
     //
     if(name) {
       topicState[i]=(char*)malloc(strlen(base)+strlen(name)+20);
-      sprintf(topicState[i],"%s/%s/state",base,name);
+      sprintf(topicState[i],"%s/%s/STATE",base,name);
 #ifdef DEBUG_PRINT_MQTT
       if(logfile) {
         fprintf(logfile,"Circuit(%d): %s state=%s ",i,name,topicState[i]);
