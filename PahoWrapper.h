@@ -18,12 +18,12 @@ private:
   MQTTAsync pahoClient;
   const char *mqttServer;
   char *topicState[8];
-  char *topicAvailability[8];
+  char *topicLWT;
   LONG volatile pahoOutstanding;
   bool volatile pahoUp;
   
   //
-  void send(const char *topic, const char *msg);
+  void send(const char *topic, int retain, const char *msg);
 
 public:
   PahoWrapper(Config *config);
