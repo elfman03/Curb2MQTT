@@ -159,6 +159,7 @@ void main() {
       time(&clock);
       fprintf(logfile,"Epoch %d begins: %s\n", epochNum, asctime(localtime(&clock)));
       fprintf(logfile, "Retrieving Curb Access Token\n"); 
+      fflush(logfile);
    }
 #endif
     const char *c=myToken->getAuthToken(myConfig, true);

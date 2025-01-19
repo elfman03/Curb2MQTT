@@ -44,7 +44,7 @@ int WebSocket::ensureClosed() {
       } else {
 #ifdef DEBUG_PRINT_WEBSOCKET
         if(logfile) {
-          wfprintf(logfile,L"The server closed the connection with status code: '%d' and reason: '%.*S'\n", 
+          fwprintf(logfile,L"The server closed the connection with status code: '%d' and reason: '%.*S'\n", 
                            (int)closeStatus, crl, closeReason);
         }
 #endif
@@ -228,7 +228,7 @@ int WebSocket::looper(int(*UTFhandler)(const char *)) {
 #endif
       } else if(bType==WINHTTP_WEB_SOCKET_CLOSE_BUFFER_TYPE) {
 #ifdef DEBUG_PRINT_WEBSOCKET
-        f(logfile) { fprintf(logfile, "WEBSOCKET: Received %d (Close=4) Buffer -- %d bytes\n",bType, incoming); }
+        if(logfile) { fprintf(logfile, "WEBSOCKET: Received %d (Close=4) Buffer -- %d bytes\n",bType, incoming); }
 #endif
         return ensureClosed();
       }
